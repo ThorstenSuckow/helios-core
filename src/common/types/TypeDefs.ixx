@@ -8,10 +8,10 @@ module;
 #include <limits>
 #include <cstddef>
 
-export module helios.core.types:TypeDefs;
+export module helios.core.common.types:TypeDefs;
 
 
-export namespace helios::core::types {
+export namespace helios::core::common::types {
 
 
     /**

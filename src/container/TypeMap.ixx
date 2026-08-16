@@ -7,7 +7,7 @@ module;
 
 export module helios.core.container:TypeMap;
 
-import helios.core.common.types;
+import helios.core.common;
 
 export namespace helios::core::container {
 
@@ -17,7 +17,7 @@ export namespace helios::core::container {
     template<typename TDomain>
     class TypeMap {
 
-        using TypeMapItemTypeId = common::types::TypeId<TDomain>;
+        using TypeMapItemTypeId = common::TypeId<TDomain>;
 
         class Concept {
         public:

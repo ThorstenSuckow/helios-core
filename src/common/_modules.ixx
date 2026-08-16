@@ -6,7 +6,7 @@
 
 export module helios.core.common;
 
-export import helios.core.common.types;
-
 export import :Guid;
+export import :TypeId;
 export import :Random;
+export import :TypeIndexer;

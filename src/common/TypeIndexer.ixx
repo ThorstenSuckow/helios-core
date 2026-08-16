@@ -1,5 +1,5 @@
 /**
- * @file helios::core::TypeIndexer.ixx
+ * @file helios::core::common::TypeIndexer.ixx
  * @brief Utility for generating unique type indices at runtime.
  */
 module;
@@ -7,9 +7,9 @@ module;
 #include <atomic>
 #include <cstddef>
 
-export module helios.core.TypeIndexer;
+export module helios.core.common:TypeIndexer;
 
-export namespace helios::core {
+export namespace helios::core::common {
 
     /**
      * @class TypeIndexer
@@ -31,7 +31,7 @@ export namespace helios::core {
      *
      *     struct EventTypeGroup {};
      *
-     *     using EventTypeIndexer = helios::core::TypeIndexer<EventTypeGroup>;
+     *     using EventTypeIndexer = helios::core::common::TypeIndexer<EventTypeGroup>;
      *
      * public:
      *

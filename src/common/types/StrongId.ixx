@@ -7,12 +7,12 @@ module;
 #include <cstdint>
 #include <string_view>
 
-export module helios.core.types:StrongId;
+export module helios.core.common.types:StrongId;
 
 import :TypeDefs;
 import :FuncDefs;
 
-export namespace helios::core::types {
+export namespace helios::core::common::types {
 
     /**
      * @brief A strongly-typed identifier using tag-based type safety.
@@ -127,8 +127,8 @@ export namespace helios::core::types {
 
 
 template<typename Tag>
-struct std::hash<helios::core::types::StrongId<Tag>> {
-    helios::core::types::StrongId_t operator()(const helios::core::types::StrongId<Tag>& id) const noexcept {
+struct std::hash<helios::core::common::types::StrongId<Tag>> {
+    helios::core::common::types::StrongId_t operator()(const helios::core::common::types::StrongId<Tag>& id) const noexcept {
         return id.value();
     }
 

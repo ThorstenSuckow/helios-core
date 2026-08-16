@@ -10,7 +10,7 @@ module;
 
 export module helios.core.common:Guid;
 
-import helios.core.types;
+import helios.core.common.types;
 
 
 export namespace helios::core::common {
@@ -31,7 +31,7 @@ export namespace helios::core::common {
         /**
          * @brief Unsafe Guid initializer for (local) var initialization.
          */
-        explicit Guid(helios::core::types::no_init_t) {};
+        explicit Guid(helios::core::common::types::no_init_t) {};
 
         /**
          * @brief Compares two Guid instances for equality.
