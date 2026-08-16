@@ -16,7 +16,7 @@ import helios.core.types;
 export namespace helios::core::common::types {
 
     /**
-     * @brief Unique type identifier.
+     * @brief Unique type identifier per arbitrary domain.
      */
     template<typename TDomain>
     class TypeId {
@@ -25,6 +25,7 @@ export namespace helios::core::common::types {
 
     public:
 
+        using DomainType = TDomain;
 
         explicit TypeId(const size_t id) : id_(id) {}
 
