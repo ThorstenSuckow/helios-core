@@ -12,13 +12,12 @@ import helios.core.common.types;
 export namespace helios::core::container {
 
     /**
-     * @brief Type-indexed container for owning a collection of type-erased objects.
+     * @brief Type-indexed container for owning a collection of type-erased objects across arbitrary domains.
      */
+    template<typename TDomain>
     class TypeMap {
 
-        struct TypeMapDomain{};
-
-        using TypeMapItemTypeId = common::types::TypeId<TypeMapDomain>;
+        using TypeMapItemTypeId = common::types::TypeId<TDomain>;
 
         class Concept {
         public:
@@ -83,6 +82,31 @@ export namespace helios::core::container {
             return (static_cast<Model<TType>&>(*typeMap_[idx])).type();
         }
 
+        template<typename TType>
+        [[nodiscard]] TType* tryGet() {
+            auto typeId = TypeMapItemTypeId::template id<TType>();
+            auto idx = typeId.value();
+
+            if (idx >= typeMap_.size() || !typeMap_[idx]) {
+                return nullptr;
+            }
+
+            return &(static_cast<Model<TType>&>(*typeMap_[idx]).type());
+        }
+
+        template<typename TType, typename ... TArgs>
+        [[nodiscard]] TType& getOrEmplace(TArgs&&... args) {
+
+            if (auto* inst = tryGet<TType>()) {
+                return *inst;
+            }
+            return add<TType>(std::forward<TArgs>(args)...);
+        }
+
+        bool clear() {
+            typeMap_.clear();
+            return true;
+        }
 
 
     };
