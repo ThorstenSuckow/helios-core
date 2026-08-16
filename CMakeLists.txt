@@ -9,6 +9,19 @@ endif()
 
 include(CTest)
 
+if(NOT TARGET thirdparty::stb)
+    include(FetchContent)
+    FetchContent_Declare(stb
+            GIT_REPOSITORY https://github.com/nothings/stb.git
+            GIT_TAG master
+    )
+    FetchContent_MakeAvailable(stb)
+
+    add_library(thirdparty_stb INTERFACE)
+    target_include_directories(thirdparty_stb INTERFACE ${stb_SOURCE_DIR})
+    add_library(thirdparty::stb ALIAS thirdparty_stb)
+endif()
+
 if(CMAKE_IFC_OUTPUT_DIRECTORY)
     file(MAKE_DIRECTORY "${CMAKE_IFC_OUTPUT_DIRECTORY}")
 endif()
@@ -26,6 +39,7 @@ add_library(helios_core STATIC)
 add_library(helios::core ALIAS helios_core)
 set_property(TARGET helios_core PROPERTY CXX_SCAN_FOR_MODULES ON)
 target_compile_features(helios_core PUBLIC cxx_std_23)
+target_link_libraries(helios_core PRIVATE thirdparty::stb)
 
 target_sources(helios_core PRIVATE ${CPP_FILES})
 
@@ -43,13 +57,7 @@ target_include_directories(helios_core PUBLIC
         $<INSTALL_INTERFACE:include>
 )
 
-set(HELIOS_ECS_BUILD_TESTS_DEFAULT OFF)
-if(PROJECT_IS_TOP_LEVEL)
-    set(HELIOS_ECS_BUILD_TESTS_DEFAULT ON)
-endif()
-option(HELIOS_ECS_BUILD_TESTS "Build helios-core tests" ${HELIOS_ECS_BUILD_TESTS_DEFAULT})
-
-if(HELIOS_ECS_BUILD_TESTS AND BUILD_TESTING)
+if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
     include(FetchContent)
 
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -61,8 +69,7 @@ if(HELIOS_ECS_BUILD_TESTS AND BUILD_TESTING)
     FetchContent_MakeAvailable(googletest)
 
     file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/test/src/*.test.cpp"
-            "${CMAKE_CURRENT_SOURCE_DIR}/tests/src/*.test.cpp")
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.test.cpp")
 
     add_executable(helios-core-tests ${TEST_SOURCES})
     target_link_libraries(helios-core-tests PRIVATE helios_core GTest::gtest_main)

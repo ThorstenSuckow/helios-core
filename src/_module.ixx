@@ -10,6 +10,8 @@ export import helios.core.types;
 export import helios.core.container;
 export import helios.core.common;
 
+export import helios.core.io;
+export import helios.core.time;
 export import helios.core.log;
 
 export import helios.core.TypeIndexer;
