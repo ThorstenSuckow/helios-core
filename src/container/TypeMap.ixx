@@ -5,7 +5,7 @@ module;
 #include <cassert>
 #include <exception>
 
-export module helios.core.container.TypeMap;
+export module helios.core.container:TypeMap;
 
 import helios.core.common.types;
 

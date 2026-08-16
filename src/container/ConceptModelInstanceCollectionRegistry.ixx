@@ -10,7 +10,7 @@ module;
 #include <utility>
 
 
-export module helios.core.container.ConceptModelInstanceCollectionRegistry;
+export module helios.core.container:ConceptModelInstanceCollectionRegistry;
 
 import helios.core.container.types;
 
