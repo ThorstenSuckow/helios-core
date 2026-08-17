@@ -50,6 +50,14 @@ export namespace helios::core::container {
 
     public:
 
+        ConceptModelRegistry() = default;
+        ConceptModelRegistry(const ConceptModelRegistry&) = delete;
+        ConceptModelRegistry& operator=(const ConceptModelRegistry&) = delete;
+
+        ConceptModelRegistry(ConceptModelRegistry&&) noexcept = default;
+        ConceptModelRegistry& operator=(ConceptModelRegistry&&) noexcept = default;
+
+
         /**
          * @brief Returns a read-only span of registered items in insertion order.
          *
