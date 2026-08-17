@@ -5,8 +5,6 @@
 module;
 
 #include <cstdint>
-#include <limits>
-#include <cstddef>
 
 export module helios.core.common.types:TypeDefs;
 
