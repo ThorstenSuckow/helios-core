@@ -7,6 +7,7 @@ export module helios.core.container;
 
 export import helios.core.container.types;
 export import helios.core.container.concepts;
+export import helios.core.container.strategies;
 
 export import :ConceptModelInstanceCollectionRegistry;
 export import :ConceptModelRegistry;
