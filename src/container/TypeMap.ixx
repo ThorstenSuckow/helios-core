@@ -4,6 +4,7 @@ module;
 #include <vector>
 #include <cassert>
 #include <exception>
+#include <utility>
 
 export module helios.core.container:TypeMap;
 
@@ -70,6 +71,11 @@ export namespace helios::core::container {
 
         template<typename TType>
         TType& get() {
+            return const_cast<TType&>(std::as_const(*this).template get<TType>());
+        }
+
+        template<typename TType>
+        const TType& get() const {
 
             auto typeId = TypeMapItemTypeId::template id<TType>();
             auto idx = typeId.value();
