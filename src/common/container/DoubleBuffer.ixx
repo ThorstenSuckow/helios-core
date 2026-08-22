@@ -8,10 +8,10 @@ module;
 #include <span>
 #include <vector>
 
-export module helios.core.container:DoubleBuffer;
+export module helios.core.common.container:DoubleBuffer;
 
 
-export namespace helios::core::container {
+export namespace helios::core::common::container {
 
     /**
      * @class DoubleBuffer

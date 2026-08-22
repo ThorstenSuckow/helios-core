@@ -1,37 +1,34 @@
 /**
- * @file WriteBuffer.ixx
- * @brief Write-only buffer for the double-buffering pattern.
+ * @file ReadWriteBuffer.ixx
+ * @brief Combined read-write buffer for single-buffered access patterns.
  */
 module;
 
+#include <span>
 #include <vector>
 #include <cstddef>
 
-export module helios.core.container:WriteBuffer;
+export module helios.core.common.container:ReadWriteBuffer;
 
-import :ReadWriteDoubleBufferFwd;
-import :ReadBuffer;
+import :Buffer;
 
-
-export namespace helios::core::container {
+export namespace helios::core::common::container {
 
     /**
-     * @class WriteBuffer
-     * @brief Write-only buffer for accumulating messages in a double-buffered system.
+     * @brief Combined read-write buffer with immediate visibility.
      *
-     * @details WriteBuffer is the producer-side of a double-buffered message system.
-     * Messages are pushed to this buffer during frame processing, then swapped with a
-     * ReadBuffer at frame boundaries. This separation enables lock-free, single-threaded
-     * producer-consumer patterns.
+     * @details Unlike the double-buffered ReadBuffer/WriteBuffer pair, ReadWriteBuffer
+     * provides immediate access to pushed messages within the same frame. Messages
+     * are visible to readers as soon as they are pushed.
      *
-     * The internal storage is only accessible to ReadWriteDoubleBuffer for swap operations.
+     * Use this when message producers and consumers operate in the same phase and
+     * immediate visibility is required. For cross-phase communication, prefer
+     * ReadWriteDoubleBuffer.
      *
-     * @tparam T The message type stored in the buffer. Must be move-constructible.
+     * @tparam T The message type stored in the buffer.
      */
     template<typename T>
-    class WriteBuffer {
-
-        friend class ReadWriteDoubleBuffer<T>;
+    class ReadWriteBuffer : public helios::core::common::container::Buffer {
 
         /**
          * @brief Internal storage for buffered messages.
@@ -41,8 +38,6 @@ export namespace helios::core::container {
         /**
          * @brief Returns a mutable reference to the internal buffer.
          *
-         * @details Only accessible to ReadWriteDoubleBuffer for swap operations.
-         *
          * @return Reference to the internal vector.
          */
         [[nodiscard]] std::vector<T>& bufferData() {
@@ -50,6 +45,15 @@ export namespace helios::core::container {
         }
 
     public:
+
+        /**
+         * @brief Returns a read-only view of all buffered messages.
+         *
+         * @return A span over all messages in the buffer.
+         */
+        std::span<const T> read() const noexcept {
+            return bufferData_;
+        }
 
         /**
          * @brief Constructs and appends a message to the buffer.
@@ -61,7 +65,7 @@ export namespace helios::core::container {
          * @return Reference to this buffer for method chaining.
          */
         template<typename... Args>
-        WriteBuffer& push(Args&&... args) {
+        ReadWriteBuffer& push(Args&&... args) {
             bufferData_.emplace_back(std::forward<Args>(args)...);
             return *this;
         }
@@ -73,19 +77,16 @@ export namespace helios::core::container {
          *
          * @return Reference to this buffer for method chaining.
          */
-        WriteBuffer& reserve(size_t size) {
+        ReadWriteBuffer& reserve(size_t size) {
             bufferData_.reserve(size);
             return *this;
         }
 
         /**
          * @brief Removes all messages from the buffer.
-         *
-         * @return Reference to this buffer for method chaining.
          */
-        WriteBuffer& clear() {
+        void clear() override {
             bufferData_.clear();
-            return *this;
         }
     };
 

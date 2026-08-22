@@ -9,14 +9,14 @@ module;
 #include <vector>
 #include <cstddef>
 
-export module helios.core.container:TypeIndexedReadWriteBuffer;
+export module helios.core.common.container:TypeIndexedReadWriteBuffer;
 
-import helios.core.container.concepts.IsTypeIndexerLike;
+import helios.core.common.container.concepts.IsTypeIndexerLike;
 import :Buffer;
 import :ReadWriteBuffer;
 
-using namespace helios::core::container::concepts;
-export namespace helios::core::container {
+using namespace helios::core::common::container::concepts;
+export namespace helios::core::common::container {
 
     /**
      * @brief Type-indexed container for immediate-access message buffers.

@@ -7,12 +7,12 @@ module;
 #include <unordered_set>
 #include <cstddef>
 
-export module helios.core.container.strategies:HashedLookupStrategy;
+export module helios.core.common.container.strategies:HashedLookupStrategy;
 
 import helios.core.common.types;
 
 using namespace helios::core::common::types;
-export namespace helios::core::container::strategies {
+export namespace helios::core::common::container::strategies {
 
     /**
      * @brief Lookup strategy using an unordered set for O(1) amortized lookups.

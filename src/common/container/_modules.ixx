@@ -1,13 +1,13 @@
 /**
 * @file _module.ixx
- * @brief Aggregate module for helios::core::container namespace.
+ * @brief Aggregate module for helios::core::common::container namespace.
  */
 
-export module helios.core.container;
+export module helios.core.common.container;
 
-export import helios.core.container.types;
-export import helios.core.container.concepts;
-export import helios.core.container.strategies;
+export import helios.core.common.container.types;
+export import helios.core.common.container.concepts;
+export import helios.core.common.container.strategies;
 
 export import :ConceptModelInstanceCollectionRegistry;
 export import :ConceptModelRegistry;

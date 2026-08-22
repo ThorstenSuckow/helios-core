@@ -9,16 +9,16 @@ module;
 #include <vector>
 #include <cstddef>
 
-export module helios.core.container:TypeIndexedDoubleBuffer;
+export module helios.core.common.container:TypeIndexedDoubleBuffer;
 
-import helios.core.container.concepts.IsTypeIndexerLike;
+import helios.core.common.container.concepts.IsTypeIndexerLike;
 import :DoubleBuffer;
 import :WriteBuffer;
 import :ReadBuffer;
 import :ReadWriteDoubleBuffer;
 
-using namespace helios::core::container::concepts;
-export namespace helios::core::container {
+using namespace helios::core::common::container::concepts;
+export namespace helios::core::common::container {
 
     /**
      * @class TypeIndexedDoubleBuffer

@@ -6,9 +6,9 @@ module;
 
 #include <cstddef>
 
-export module helios.core.container.types:ConceptModelCollectionKey;
+export module helios.core.common.container.types:ConceptModelCollectionKey;
 
-export namespace helios::core::container::types {
+export namespace helios::core::common::container::types {
 
     /**
      * @brief Simple key struct for ConceptModelCollections, stores the typeId and the insertion index.

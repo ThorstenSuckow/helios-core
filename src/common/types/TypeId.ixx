@@ -7,13 +7,12 @@ module;
 #include <functional>
 #include <cstddef>
 
-export module helios.core.common:TypeId;
+export module helios.core.common.types:TypeId;
 
-
+import :TypeDefs;
 import :TypeIndexer;
-import helios.core.common.types;
 
-export namespace helios::core::common {
+export namespace helios::core::common::types {
 
     /**
      * @brief Unique type identifier per arbitrary domain.
@@ -29,7 +28,7 @@ export namespace helios::core::common {
 
         explicit TypeId(const size_t id) : id_(id) {}
 
-        explicit TypeId(helios::core::common::types::no_init_t) {}
+        explicit TypeId(types::no_init_t) {}
 
         [[nodiscard]] size_t value() const noexcept {
             return id_;
@@ -37,7 +36,7 @@ export namespace helios::core::common {
 
         template <typename T>
         [[nodiscard]] static TypeId id() {
-            static const size_t tid = helios::core::common::TypeIndexer<TDomain>::template typeIndex<T>();
+            static const size_t tid = TypeIndexer<TDomain>::template typeIndex<T>();
             return TypeId(tid);
         }
 
@@ -52,8 +51,8 @@ export namespace helios::core::common {
  * @brief Hash specialization for TypeId.
  */
 template<typename TDomain>
-struct std::hash<helios::core::common::TypeId<TDomain>> {
-   std::size_t operator()(const helios::core::common::TypeId<TDomain>& id) const noexcept {
+struct std::hash<helios::core::common::types::TypeId<TDomain>> {
+   std::size_t operator()(const helios::core::common::types::TypeId<TDomain>& id) const noexcept {
         return id.value();
     }
 

@@ -9,7 +9,7 @@ module;
 #include <vector>
 #include <cstddef>
 
-export module helios.core.container:ReadWriteDoubleBuffer;
+export module helios.core.common.container:ReadWriteDoubleBuffer;
 
 export import :ReadWriteDoubleBufferFwd;
 
@@ -18,7 +18,7 @@ import :WriteBuffer;
 import :ReadBuffer;
 
 
-export namespace helios::core::container {
+export namespace helios::core::common::container {
     /**
      * @class ReadWriteDoubleBuffer
      * @brief Type-safe double-buffered container for messages of type T.

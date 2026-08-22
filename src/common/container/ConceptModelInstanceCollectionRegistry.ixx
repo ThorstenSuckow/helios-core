@@ -10,11 +10,11 @@ module;
 #include <utility>
 
 
-export module helios.core.container:ConceptModelInstanceCollectionRegistry;
+export module helios.core.common.container:ConceptModelInstanceCollectionRegistry;
 
-import helios.core.container.types;
+import helios.core.common.container.types;
 
-export namespace helios::core::container {
+export namespace helios::core::common::container {
 
     /**
      * @brief Stores type-erased wrapper instances grouped by underlying type.
@@ -28,7 +28,7 @@ export namespace helios::core::container {
         /**
          * @brief Key type for addressing a stored wrapper by type-id and index.
          */
-        using ConceptModelCollectionKey = helios::core::container::types::ConceptModelCollectionKey<TTypeIdProvider>;
+        using ConceptModelCollectionKey = helios::core::common::container::types::ConceptModelCollectionKey<TTypeIdProvider>;
 
         /**
          * @brief Dense per-type storage of wrapper instances.
