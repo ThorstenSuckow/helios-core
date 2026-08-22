@@ -6,12 +6,12 @@ module;
 
 #include <concepts>
 
-export module helios.core.concepts:IsStrongIdLike;
+export module helios.core.common.concepts:IsStrongIdLike;
 
 import helios.core.common.types;
 
 using namespace helios::core::common::types;
-export namespace helios::core::concepts {
+export namespace helios::core::common::concepts {
 
     /**
      * @brief Constraint for types that behave as a strong, validatable identifier.
