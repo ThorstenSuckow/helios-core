@@ -27,7 +27,7 @@ export namespace helios::core::common::traits {
     struct FunctionSignatureTraits;
 
     template<typename TResult, typename TClass, typename... TArgs>
-   struct FunctionSignatureTraits<TResult(TClass::*)(TArgs...) noexcept>
+    struct FunctionSignatureTraits<TResult(TClass::*)(TArgs...) noexcept>
        : FunctionSignatureTraitsBase<TResult, TArgs...> {};
 
     template<typename TResult, typename TClass, typename... TArgs>
