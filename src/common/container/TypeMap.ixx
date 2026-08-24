@@ -1,3 +1,7 @@
+/**
+ * @file TypeMap.ixx
+ * @brief TypeMap for maintaining a map of type indexed data.
+ */
 module;
 
 #include <memory>
@@ -14,6 +18,9 @@ export namespace helios::core::common::container {
 
     /**
      * @brief Type-indexed container for owning a collection of type-erased objects across arbitrary domains.
+     *
+     * Allows for borrowing other type maps for inspecting other TypeMap's data.
+     * Data can be bound by references or completely owned by the TypeMap.
      */
     template<typename TDomain>
     class TypeMap {
@@ -37,13 +44,36 @@ export namespace helios::core::common::container {
                 return type_;
             }
 
-            TType& type() const {
+            const TType& type() const {
                 return type_;
             }
         };
 
+        template<typename TType>
+        class BoundRefModel final : public Concept {
+            TType* type_;
 
-        std::vector<std::unique_ptr<Concept>> owned_;
+        public:
+
+            explicit BoundRefModel(TType& type) : type_(&type) {
+                assert(type_ != nullptr && "Unexpected nullptr.");
+            }
+
+            TType& type() {
+                assert(type_ != nullptr && "Unexpected nullptr.");
+                return *type_;
+            }
+
+            const TType& type() const {
+                assert(type_ != nullptr && "Unexpected nullptr.");
+                return *type_;
+            }
+        };
+
+
+        std::vector<std::unique_ptr<Concept>> ownedModels_;
+
+        std::vector<std::unique_ptr<Concept>> boundRefs_;
 
         std::vector<TypeMap*> borrowedMaps_;
 
@@ -80,27 +110,59 @@ export namespace helios::core::common::container {
             return *this;
         }
         
-        
-        template<typename TType, typename... Args>
-        TType& emplace(Args&& ...args) {
+        template<typename TType>
+        TType& bind(TType& type) {
 
-            auto typeId = TypeMapItemTypeId::template id<TType>();
+            using Type = std::remove_cvref_t<TType>;
+
+            auto typeId = TypeMapItemTypeId::template id<Type>();
             auto idx = typeId.value();
 
-            auto model = std::make_unique<OwnedModel<TType>>(std::forward<Args>(args)...);
+            auto model = std::make_unique<BoundRefModel<Type>>(type);
 
-            if (owned_.size() <= idx) {
-                owned_.resize(idx + 1);
+            if (boundRefs_.size() <= idx) {
+                boundRefs_.resize(idx + 1);
             }
 
-            if (owned_[idx]) [[unlikely]] {
+            if (boundRefs_[idx]) [[unlikely]] {
                 assert(false && "Resource already registered.");
                 std::terminate();
             }
 
-            owned_[idx] = std::move(model);
+            boundRefs_[idx] = std::move(model);
 
-            return (static_cast<OwnedModel<TType>&>(*owned_[idx])).type();
+            return (static_cast<BoundRefModel<Type>&>(*boundRefs_[idx])).type();
+
+        }
+
+
+        template<typename TType, typename... Args>
+        TType& emplace(Args&& ...args) {
+            return emplace<TType>(TType{std::forward<Args>(args)...});
+        }
+
+        template<typename TType>
+        requires (!std::is_lvalue_reference_v<TType>)
+        auto& emplace(TType&& typeToEmplace) {
+
+            using Type = std::remove_cvref_t<TType>;
+            auto typeId = TypeMapItemTypeId::template id<Type>();
+            auto idx = typeId.value();
+
+            auto model = std::make_unique<OwnedModel<Type>>(std::move(typeToEmplace));
+
+            if (ownedModels_.size() <= idx) {
+                ownedModels_.resize(idx + 1);
+            }
+
+            if (ownedModels_[idx]) [[unlikely]] {
+                assert(false && "Resource already registered.");
+                std::terminate();
+            }
+
+            ownedModels_[idx] = std::move(model);
+
+            return (static_cast<OwnedModel<Type>&>(*ownedModels_[idx])).type();
         }
 
         template<typename TType>
@@ -133,8 +195,12 @@ export namespace helios::core::common::container {
             auto typeId = TypeMapItemTypeId::template id<Type>();
             auto idx = typeId.value();
 
-            if (idx < owned_.size() && owned_[idx]) {
-                return &(static_cast<OwnedModel<Type>&>(*owned_[idx]).type());
+            if (idx < ownedModels_.size() && ownedModels_[idx]) {
+                return &(static_cast<OwnedModel<Type>&>(*ownedModels_[idx]).type());
+            } 
+            
+            if (idx < boundRefs_.size() && boundRefs_[idx]) {
+                return &(static_cast<BoundRefModel<Type>&>(*boundRefs_[idx]).type());
             }
 
             for (auto* borrowedMap : borrowedMaps_) {
@@ -155,9 +221,26 @@ export namespace helios::core::common::container {
             return emplace<TType>(std::forward<TArgs>(args)...);
         }
 
-        bool clear() {
+        /**
+         * @brief Clears **this** TypeMap's owned data.
+         *
+         * @return
+         */
+        bool clearOwned() {
             if (clearable_) {
-                owned_.clear();
+                ownedModels_.clear();
+            }
+            return clearable_;
+        }
+
+        /**
+         * @brief Clears **this** TypeMap's bound data.
+         *+
+         * @return
+         */
+        bool clearBound() {
+            if (clearable_) {
+                boundRefs_.clear();
             }
             return clearable_;
         }
