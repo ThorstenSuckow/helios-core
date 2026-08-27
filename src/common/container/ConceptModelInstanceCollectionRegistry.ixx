@@ -5,6 +5,7 @@
 module;
 
 #include <memory>
+#include <concepts>
 #include <span>
 #include <vector>
 #include <utility>
@@ -116,8 +117,26 @@ export namespace helios::core::common::container {
 
             needsUpdate_ = false;
         }
+        
+        
+        void updateIndices(TTypeIdProvider typeId) {
+            const auto typeIdIndex = typeId.value();
 
+            if (items_.size() <= typeIdIndex) {
+                items_.resize(typeIdIndex + 1);
+            }
+            if (typeIdToInsertionOrder_.size() <= typeIdIndex) {
+                typeIdToInsertionOrder_.resize(typeIdIndex + 1);
+            }
 
+            if (items_[typeIdIndex].empty()) {
+                insertionOrder_.push_back(typeIdIndex);
+                typeIdToInsertionOrder_[typeIdIndex] = insertionOrder_.size() - 1;
+            }
+            
+        }
+
+        
     public:
 
         /**
@@ -156,20 +175,32 @@ export namespace helios::core::common::container {
             TWrapper wrapper{TUnterlying{std::forward<Args>(args)...}};
 
             const auto typeId = TTypeIdProvider::template id<TUnterlying>();
+            updateIndices(typeId);
+            const auto typeIdIndex = typeId.value(); 
+
+            items_[typeIdIndex].push_back(std::make_unique<TWrapper>(std::move(wrapper)));
+
+            needsUpdate_ = true;
+
+            return ConceptModelCollectionKey{typeId, items_[typeIdIndex].size() - 1};
+        }
+
+        /**
+         * @brief Add a pre-fabricated wrapper to the collection.
+         *
+         * @details The wrapper must provide a typeId() function that returns a
+         * TTypeIdProvider value to properly compute the returned key.
+         *
+         * @param wrapper The wrapper to add
+         *
+         * @return The key under which the wrapper is identified.
+         */
+        ConceptModelCollectionKey add(TWrapper&& wrapper) requires requires (const TWrapper& candidate) {{ candidate.typeId() } -> std::same_as<TTypeIdProvider>;} {
+
+            const auto typeId = wrapper.typeId();
             const auto typeIdIndex = typeId.value();
-
-            if (items_.size() <= typeIdIndex) {
-                items_.resize(typeIdIndex + 1);
-            }
-            if (typeIdToInsertionOrder_.size() <= typeIdIndex) {
-                typeIdToInsertionOrder_.resize(typeIdIndex + 1);
-            }
-
-            if (items_[typeIdIndex].empty()) {
-                insertionOrder_.push_back(typeIdIndex);
-                typeIdToInsertionOrder_[typeIdIndex] = insertionOrder_.size() - 1;
-            }
-
+            
+            updateIndices(typeId);
             items_[typeIdIndex].push_back(std::make_unique<TWrapper>(std::move(wrapper)));
 
             needsUpdate_ = true;
@@ -232,6 +263,16 @@ export namespace helios::core::common::container {
          * @return Pointer to the wrapper, or `nullptr` if the key is out of range.
          */
         [[nodiscard]] TWrapper* item(ConceptModelCollectionKey key) noexcept {
+            return const_cast<TWrapper*>(std::as_const(*this).item(key));
+        }
+
+        /**
+         * @brief Returns a non-mutable item by key.
+         *
+         * @param key Compound key containing type-id and per-type index.
+         * @return Pointer to the wrapper, or `nullptr` if the key is out of range.
+         */
+        [[nodiscard]] const TWrapper* item(ConceptModelCollectionKey key) const noexcept {
             const auto typeId = key.typeId.value();
             const auto idx = key.index;
 
