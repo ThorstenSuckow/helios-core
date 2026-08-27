@@ -20,23 +20,23 @@ export namespace helios::core::common::types {
     template<typename TDomain>
     class TypeId {
 
-        size_t id_{0};
+        TypeId_t id_{0};
 
     public:
 
         using DomainType = TDomain;
 
-        explicit TypeId(const size_t id) : id_(id) {}
+        explicit TypeId(const TypeId_t id) : id_(id) {}
 
         explicit TypeId(types::no_init_t) {}
 
-        [[nodiscard]] size_t value() const noexcept {
+        [[nodiscard]] TypeId_t value() const noexcept {
             return id_;
         }
 
         template <typename T>
         [[nodiscard]] static TypeId id() {
-            static const size_t tid = TypeIndexer<TDomain>::template typeIndex<T>();
+            static const TypeId_t tid = TypeIndexer<TDomain>::template typeIndex<T>();
             return TypeId(tid);
         }
 

@@ -17,6 +17,9 @@ export namespace helios::core::common::types {
      */
     using StrongId_t = uint32_t;
 
+    using TypeId_t = uint32_t;
+
+
     /**
      * @brief Tag type used to indicate skipping default initialization.
      */

@@ -7,7 +7,10 @@ module;
 #include <atomic>
 #include <cstddef>
 
+
 export module helios.core.common.types:TypeIndexer;
+
+import :TypeDefs;
 
 export namespace helios::core::common::types {
 
@@ -23,7 +26,7 @@ export namespace helios::core::common::types {
         /**
          * @brief A static atomic counter used for generating unique type indices.
          */
-        static inline std::atomic<size_t> counter_{0};
+        static inline std::atomic<TypeId_t> counter_{0};
 
     public:
 
@@ -35,8 +38,8 @@ export namespace helios::core::common::types {
          * @return A unique index representing the specific type T within this Group.
          */
         template<typename T>
-        static size_t typeIndex() {
-            static const size_t typeIndex = counter_.fetch_add(1, std::memory_order::relaxed);
+        static TypeId_t typeIndex() {
+            static const TypeId_t typeIndex = counter_.fetch_add(1, std::memory_order::relaxed);
             return typeIndex;
         }
 
