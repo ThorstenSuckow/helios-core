@@ -16,11 +16,15 @@ export namespace helios::core::common::traits {
     struct FunctionSignatureTraitsBase {
         using ReturnType = TResult;
         using ArgumentTypes = std::tuple<TArgs...>;
+        using UnqualifiedArgumentTypes = std::tuple<std::remove_cvref_t<TArgs>...>;
 
         static constexpr size_t NumArgs = sizeof...(TArgs);
 
         template<std::size_t I>
-        using Arg = std::tuple_element_t<I, ArgumentTypes>;
+        using ArgumentType = std::tuple_element_t<I, ArgumentTypes>;
+
+        template<std::size_t I>
+        using UnqualifiedArgumentType = std::remove_cvref_t<ArgumentType<I>>;
     };
 
     template<typename>
