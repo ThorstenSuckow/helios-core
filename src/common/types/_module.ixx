@@ -10,3 +10,5 @@ export import :TypeDefs;
 export import :FuncDefs;
 export import :TypeId;
 export import :TypeIndexer;
+export import :TypeErasedValueWrapper;
+export import :TypeErasedInlineValueWrapper;
