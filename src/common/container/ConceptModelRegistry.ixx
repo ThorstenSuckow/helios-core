@@ -9,6 +9,7 @@ module;
 #include <span>
 #include <vector>
 #include <utility>
+#include <exception>
 
 
 export module helios.core.common.container:ConceptModelRegistry;
@@ -88,7 +89,10 @@ export namespace helios::core::common::container {
         template<typename TConcreteType, typename... Args>
         TConcreteType& add(Args&&... args) {
 
-            assert(!has<TConcreteType>() && "TWrapperType already registered.");
+            if (has<TConcreteType>()) [[unlikely]] {
+                assert(false && "TWrapperType already registered.");
+                std::terminate();
+            }
 
             TWrapperType wrapper{TConcreteType{std::forward<Args>(args)...}};
 
