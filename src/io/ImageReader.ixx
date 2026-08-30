@@ -12,7 +12,7 @@ import :types;
 
 export namespace helios::core::io {
 /**
- * @brief Simple ImageReader based in stb-image.
+ * @brief Simple ImageReader based on stb-image.
  *
  * @see https://github.com/nothings/stb
  */
