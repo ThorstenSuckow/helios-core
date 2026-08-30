@@ -109,13 +109,19 @@ public:
         using Type = std::remove_cvref_t<TConcrete>;
         using ModelType = Model<Type>;
 
-        static_assert(sizeof(ModelType) <= StorageSize,
-                      "TypeErasedInlineValueWrapper cannot wrap types larger than the inline storage.");
-        static_assert(alignof(ModelType) <= StorageAlignment,
-                      "TypeErasedInlineValueWrapper cannot wrap types with larger alignment than the inline storage.");
+        static_assert(
+            sizeof(ModelType) <= StorageSize,
+            "TypeErasedInlineValueWrapper cannot wrap types larger than the inline storage."
+        );
+        static_assert(
+            alignof(ModelType) <= StorageAlignment,
+            "TypeErasedInlineValueWrapper cannot wrap types with larger alignment than the inline storage."
+        );
 
-        static_assert(std::is_nothrow_move_constructible_v<Type>,
-                      "TypeErasedInlineValueWrapper requires types to be nothrow move constructible.");
+        static_assert(
+            std::is_nothrow_move_constructible_v<Type>,
+            "TypeErasedInlineValueWrapper requires types to be nothrow move constructible."
+        );
 
         model_ = std::construct_at(reinterpret_cast<ModelType*>(storage_), std::forward<TConcrete>(concrete));
 
