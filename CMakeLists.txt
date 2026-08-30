@@ -9,6 +9,37 @@ endif()
 
 include(CTest)
 
+set(HELIOS_USE_DEVTOOLS_DEFAULT OFF)
+if(PROJECT_IS_TOP_LEVEL)
+    set(HELIOS_USE_DEVTOOLS_DEFAULT ON)
+endif()
+
+option(HELIOS_USE_DEVTOOLS "Load shared tooling from helios-devtools" ${HELIOS_USE_DEVTOOLS_DEFAULT})
+set(HELIOS_DEVTOOLS_GIT_REPOSITORY "https://github.com/thorstensuckow/helios-devtools.git" CACHE STRING "helios-devtools git repository")
+set(HELIOS_DEVTOOLS_GIT_TAG "main" CACHE STRING "helios-devtools git tag or commit")
+set(HELIOS_DEVTOOLS_LOCAL_PATH "" CACHE PATH "Optional local helios-devtools checkout")
+
+if(HELIOS_USE_DEVTOOLS)
+    include(FetchContent)
+
+    if(HELIOS_DEVTOOLS_LOCAL_PATH)
+        FetchContent_Declare(
+                helios_devtools
+                SOURCE_DIR "${HELIOS_DEVTOOLS_LOCAL_PATH}"
+        )
+    else()
+        FetchContent_Declare(
+                helios_devtools
+                GIT_REPOSITORY "${HELIOS_DEVTOOLS_GIT_REPOSITORY}"
+                GIT_TAG "${HELIOS_DEVTOOLS_GIT_TAG}"
+        )
+    endif()
+
+    FetchContent_MakeAvailable(helios_devtools)
+
+    include("${helios_devtools_SOURCE_DIR}/cmake/HeliosDevtools.cmake")
+endif()
+
 if(NOT TARGET thirdparty::stb)
     include(FetchContent)
     FetchContent_Declare(stb
@@ -57,6 +88,10 @@ target_include_directories(helios_core PUBLIC
         $<INSTALL_INTERFACE:include>
 )
 
+if(HELIOS_USE_DEVTOOLS)
+    helios_configure_target(helios_core)
+endif()
+
 if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
     include(FetchContent)
 
@@ -78,8 +113,13 @@ if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
     gtest_discover_tests(helios-core-tests)
 endif()
 
-option(BUILD_BENCHMARKS "Build benchmarks" ON)
-if(BUILD_BENCHMARKS)
+set(HELIOS_BUILD_BENCHMARKS_DEFAULT OFF)
+if(PROJECT_IS_TOP_LEVEL)
+    set(HELIOS_BUILD_BENCHMARKS_DEFAULT ON)
+endif()
+
+option(HELIOS_BUILD_BENCHMARKS "Build helios-core benchmarks" ${HELIOS_BUILD_BENCHMARKS_DEFAULT})
+if(HELIOS_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif()
 

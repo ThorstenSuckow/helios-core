@@ -28,6 +28,28 @@ target_link_libraries(your_target PRIVATE helios::core)
 
 ## Development
 
+### Central tooling (`helios-devtools`)
+
+`helios-core` can load shared quality tooling from `helios-devtools` via CMake `FetchContent`.
+The expected entry file is `cmake/HeliosDevtools.cmake` (required).
+
+Configure-time options:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DHELIOS_USE_DEVTOOLS=ON \
+  -DHELIOS_DEVTOOLS_GIT_REPOSITORY=https://github.com/thorstensuckow/helios-devtools.git \
+  -DHELIOS_DEVTOOLS_GIT_TAG=v1.0.0
+```
+
+Use a local checkout instead of Git fetch:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DHELIOS_USE_DEVTOOLS=ON \
+  -DHELIOS_DEVTOOLS_LOCAL_PATH=/absolute/path/to/helios-devtools
+```
+
 Build the project:
 
 ```bash
@@ -35,44 +57,65 @@ cmake -S . -B build
 cmake --build build
 ```
 
+Quick devtools entrypoint from this repository (no environment variables required):
+
+```bash
+sh ./run-devtools.sh format
+sh ./run-devtools.sh format-fix
+sh ./run-devtools.sh tidy
+sh ./run-devtools.sh tidy-fix
+```
+
+`run-devtools.sh` is a thin wrapper over existing CMake targets and expects an
+already configured build directory (default: `cmake-build-debug`).
+
+Benchmarks are controlled with `HELIOS_BUILD_BENCHMARKS` (top-level default: `ON`, dependency default: `OFF`).
+
 Run tests when test discovery is enabled:
 
 ```bash
 ctest --test-dir build --output-on-failure
 ```
 
-Run clang-tidy for the module sources:
+Run clang-tidy checks:
 
 ```bash
-./run-tidy.sh
+cmake --build cmake-build-debug --target tidy
 ```
 
-Optional (skip build step when artifacts already exist):
+Run clang-tidy with autofix:
 
 ```bash
-SKIP_BUILD=1 ./run-tidy.sh
+cmake --build cmake-build-debug --target tidy-fix
 ```
 
-Run clang-format for module sources (default: `./src`):
+Run clang-format checks:
 
 ```bash
-./run-format.sh
+cmake --build cmake-build-debug --target format
 ```
 
-Check formatting without modifying files:
+Run clang-format with in-place fixes:
 
 ```bash
-./run-format.sh --check-only
+cmake --build cmake-build-debug --target format-fix
 ```
 
-Format a specific file or directory:
+Target-specific variants are also available:
 
 ```bash
-./run-format.sh src
-./run-format.sh src/helios/core/some_file.cpp
+cmake --build cmake-build-debug --target tidy-helios_core
+cmake --build cmake-build-debug --target format-helios_core
 ```
 
-Formatting is configured in `.clang-format` (based on LLVM, `ColumnLimit: 120`).
+Formatting and clang-tidy checks are sourced from shared `helios-devtools` config.
+
+When `HELIOS_USE_DEVTOOLS=ON`, CMake also provides generated quality targets:
+
+- `tidy-helios_core`
+- `tidy-fix-helios_core`
+- `format-helios_core`
+- `format-fix-helios_core`
 
 ## Related repositories
 
