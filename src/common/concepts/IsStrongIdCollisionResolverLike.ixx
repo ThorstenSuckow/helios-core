@@ -13,17 +13,16 @@ import helios.core.common.types;
 using namespace helios::core::common::types;
 export namespace helios::core::common::concepts {
 
-    /**
-     * @brief Constraint for types that can track strong ID uniqueness.
-     *
-     * @tparam T The lookup strategy type to check.
-     */
-    template <typename T>
-    concept IsStrongIdCollisionResolverLike = requires(T& t, const StrongId_t id)
-    {
-        {t.add(id)}->std::same_as<bool>;
-        {t.remove(id)}->std::same_as<bool>;
-        {t.has(id)}->std::same_as<bool>;
-    };
+/**
+ * @brief Constraint for types that can track strong ID uniqueness.
+ *
+ * @tparam T The lookup strategy type to check.
+ */
+template <typename T>
+concept IsStrongIdCollisionResolverLike = requires(T& t, const StrongId_t id) {
+    { t.add(id) } -> std::same_as<bool>;
+    { t.remove(id) } -> std::same_as<bool>;
+    { t.has(id) } -> std::same_as<bool>;
+};
 
-}
+} // namespace helios::core::common::concepts

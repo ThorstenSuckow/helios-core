@@ -5,20 +5,18 @@ module;
 export module helios.core.io:types.ImageData;
 
 export namespace helios::core::io {
-    /**
-     * @brief Simple container for loading byte-baseds image data along with meta-data information.
-     */
-    struct ImageData {
+/**
+ * @brief Simple container for loading byte-baseds image data along with meta-data information.
+ */
+struct ImageData {
 
-        std::vector<std::byte> data;
+    std::vector<std::byte> data;
 
-        int width;
+    int width;
 
-        int height;
+    int height;
 
-        int nrChannels;
+    int nrChannels;
+};
 
-    };
-
-
-}
+} // namespace helios::core::io

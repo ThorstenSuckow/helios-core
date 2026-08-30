@@ -5,114 +5,108 @@
 module;
 
 #include <atomic>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 export module helios.core.common:Guid;
 
 import helios.core.common.types;
 
-
 export namespace helios::core::common {
 
+/**
+ * @brief Representative of a Globally Unique Identifier.
+ *
+ * Generating GUIDs with this class is considered thread-safe.
+ */
+class Guid final {
+private:
+    explicit Guid(uint64_t value) noexcept : value_(value) {}
+    uint64_t value_{};
+
+public:
+    /**
+     * @brief Unsafe Guid initializer for (local) var initialization.
+     */
+    explicit Guid(helios::core::common::types::no_init_t /*unused*/) {};
 
     /**
-     * @brief Representative of a Globally Unique Identifier.
+     * @brief Compares two Guid instances for equality.
      *
-     * Generating GUIDs with this class is considered thread-safe.
+     * @param guid The Guid to compare against.
+     *
+     * @return `true` if both Guids have the same underlying value, `false` otherwise.
      */
-    class Guid final {
-    private:
-        explicit Guid(uint64_t value) noexcept : value_(value) {}
-        uint64_t value_{};
+    constexpr bool operator==(const Guid& guid) const = default;
 
-    public:
+    /**
+     * @brief Compares two Guid instances for inequality.
+     *
+     * @param guid The Guid to compare against.
+     *
+     * @return `true` if the Guids have different underlying values, `false` otherwise.
+     */
+    constexpr bool operator!=(const Guid& guid) const = default;
 
-        /**
-         * @brief Unsafe Guid initializer for (local) var initialization.
-         */
-        explicit Guid(helios::core::common::types::no_init_t) {};
+    /**
+     * @brief Less-than comparison operator, enabling ordering of Guid instances.
+     *
+     * @param guid The Guid to compare against.
+     *
+     * @return `true` if this Guid's value is less than the other, `false` otherwise.
+     */
+    constexpr bool operator<(const Guid& guid) const noexcept {
+        return value_ < guid.value();
+    }
 
-        /**
-         * @brief Compares two Guid instances for equality.
-         *
-         * @param guid The Guid to compare against.
-         *
-         * @return `true` if both Guids have the same underlying value, `false` otherwise.
-         */
-        constexpr bool operator==(const Guid& guid) const = default;
+    /**
+     * @brief Greater-than comparison operator, enabling ordering of Guid instances.
+     *
+     * @param guid The Guid to compare against.
+     *
+     * @return `true` if this Guid's value is greater than the other, `false` otherwise.
+     */
+    constexpr bool operator>(const Guid& guid) const noexcept {
+        return value_ > guid.value();
+    }
 
-        /**
-         * @brief Compares two Guid instances for inequality.
-         *
-         * @param guid The Guid to compare against.
-         *
-         * @return `true` if the Guids have different underlying values, `false` otherwise.
-         */
-        constexpr bool operator!=(const Guid& guid) const = default;
+    /**
+     * @brief Generates a new Guid.
+     *
+     * This function produces a new, unique Guid value. It is safe to call from
+     * multiple threads.
+     *
+     * @return A newly generated `Guid` instance.
+     */
+    static Guid generate() noexcept {
+        static std::atomic<uint64_t> counter{1};
+        return Guid(counter.fetch_add(1, std::memory_order_relaxed));
+    }
 
-        /**
-         * @brief Less-than comparison operator, enabling ordering of Guid instances.
-         *
-         * @param guid The Guid to compare against.
-         *
-         * @return `true` if this Guid's value is less than the other, `false` otherwise.
-         */
-        constexpr bool operator<(const Guid& guid) const noexcept {
-            return value_ < guid.value();
-        }
+    /**
+     * @brief Returns the raw 64-bit value of this Guid.
+     *
+     * @return The underlying uint64_t value representing this Guid.
+     */
+    [[nodiscard]] constexpr uint64_t value() const noexcept {
+        return value_;
+    }
 
-        /**
-         * @brief Greater-than comparison operator, enabling ordering of Guid instances.
-         *
-         * @param guid The Guid to compare against.
-         *
-         * @return `true` if this Guid's value is greater than the other, `false` otherwise.
-         */
-        constexpr bool operator>(const Guid& guid) const noexcept {
-            return value_ > guid.value();
-        }
+    /**
+     * @brief Calculates a hash fot this GUID.
+     *
+     * The hash simply defaults to the value_ of this Guid.
+     *
+     * @return The hash value for this Guid.
+     */
+    [[nodiscard]] std::size_t hash() const noexcept {
+        return std::hash<uint64_t>{}(value_);
+    }
+};
 
+} // namespace helios::core::common
 
-        /**
-         * @brief Generates a new Guid.
-         *
-         * This function produces a new, unique Guid value. It is safe to call from
-         * multiple threads.
-         *
-         * @return A newly generated `Guid` instance.
-         */
-        static Guid generate() noexcept {
-            static std::atomic<uint64_t> counter{1};
-            return Guid(counter.fetch_add(1, std::memory_order_relaxed));
-        }
-
-        /**
-         * @brief Returns the raw 64-bit value of this Guid.
-         *
-         * @return The underlying uint64_t value representing this Guid.
-         */
-        [[nodiscard]] constexpr uint64_t value() const noexcept {
-            return value_;
-        }
-
-        /**
-         * @brief Calculates a hash fot this GUID.
-         *
-         * The hash simply defaults to the value_ of this Guid.
-         *
-         * @return The hash value for this Guid.
-         */
-        [[nodiscard]] std::size_t hash() const noexcept {
-            return std::hash<uint64_t>{}(value_);
-        }
-
-    };
-
-} // namespace helios::engine::util
-
-
-template<>
+template <>
 struct std::hash<helios::core::common::Guid> {
     std::size_t operator()(const helios::core::common::Guid& guid) const noexcept {
         return guid.hash();

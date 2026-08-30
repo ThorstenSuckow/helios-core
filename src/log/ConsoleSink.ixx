@@ -13,55 +13,62 @@ import helios.core.log.LogSink;
 
 export namespace helios::core::log {
 
+/**
+ * @class ConsoleSink
+ * @brief LogSink implementation that writes to standard output.
+ *
+ * This is the default sink for console-based logging. Output is formatted
+ * with level prefix and scope tag, mirroring the original Logger behavior.
+ */
+class ConsoleSink : public LogSink {
+
+public:
     /**
-     * @class ConsoleSink
-     * @brief LogSink implementation that writes to standard output.
-     *
-     * This is the default sink for console-based logging. Output is formatted
-     * with level prefix and scope tag, mirroring the original Logger behavior.
+     * @brief Unique type identifier for this sink.
      */
-    class ConsoleSink : public LogSink {
+    static constexpr SinkTypeId TYPE_ID = "console";
 
-    public:
-        /**
-         * @brief Unique type identifier for this sink.
-         */
-        static constexpr SinkTypeId TYPE_ID = "console";
+    /**
+     * @brief Returns the unique type identifier for this sink.
+     *
+     * @return "console".
+     */
+    [[nodiscard]] SinkTypeId typeId() const noexcept override {
+        return TYPE_ID;
+    }
 
-        /**
-         * @brief Returns the unique type identifier for this sink.
-         *
-         * @return "console".
-         */
-        [[nodiscard]] SinkTypeId typeId() const noexcept override {
-            return TYPE_ID;
+    /**
+     * @brief Writes a formatted log message to stdout.
+     *
+     * @param level   The severity level of the message.
+     * @param scope   The source scope/module name.
+     * @param message The log message text.
+     */
+    void write(LogLevel level, const std::string& scope, const std::string& message) override {
+        const char* levelStr = "";
+        switch (level) {
+        case LogLevel::Debug:
+            levelStr = "[DEBUG]";
+            break;
+        case LogLevel::Info:
+            levelStr = "[INFO]";
+            break;
+        case LogLevel::Warn:
+            levelStr = "[WARN]";
+            break;
+        case LogLevel::Error:
+            levelStr = "[ERROR]";
+            break;
         }
+        std::cout << levelStr << "[" << scope << "] " << message << '\n';
+    }
 
-        /**
-         * @brief Writes a formatted log message to stdout.
-         *
-         * @param level   The severity level of the message.
-         * @param scope   The source scope/module name.
-         * @param message The log message text.
-         */
-        void write(LogLevel level, const std::string& scope, const std::string& message) override {
-            const char* levelStr = "";
-            switch (level) {
-                case LogLevel::Debug: levelStr = "[DEBUG]"; break;
-                case LogLevel::Info:  levelStr = "[INFO]";  break;
-                case LogLevel::Warn:  levelStr = "[WARN]";  break;
-                case LogLevel::Error: levelStr = "[ERROR]"; break;
-            }
-            std::cout << levelStr << "[" << scope << "] " << message << std::endl;
-        }
+    /**
+     * @brief Flushes the stdout buffer.
+     */
+    void flush() override {
+        std::cout.flush();
+    }
+};
 
-        /**
-         * @brief Flushes the stdout buffer.
-         */
-        void flush() override {
-            std::cout.flush();
-        }
-    };
-
-}
-
+} // namespace helios::core::log

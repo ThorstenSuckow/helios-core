@@ -14,49 +14,45 @@ import helios.core.log.LogManager;
 #define HELIOS_LOG_SCOPE "helios::core::io.FileReader"
 export namespace helios::core::io {
 
+/**
+ * @brief Abstract base class for reading file contents into a string.
+ *
+ */
+class StringFileReader {
+
+protected:
+    /**
+     * @brief Shared logger instance for all StringFileReader objects.
+     */
+    inline static const helios::core::log::Logger& logger_ =
+        helios::core::log::LogManager::loggerForScope(HELIOS_LOG_SCOPE);
+
+public:
+    virtual ~StringFileReader() = default;
 
     /**
-     * @brief Abstract base class for reading file contents into a string.
-     *
+     * Default constructor.
      */
-    class StringFileReader {
+    StringFileReader() = default;
 
-    protected:
-        /**
-         * @brief Shared logger instance for all StringFileReader objects.
-         */
-        inline static const helios::core::log::Logger& logger_ = helios::core::log::LogManager::loggerForScope(HELIOS_LOG_SCOPE);
+    /**
+     * @brief Reads the entire contents of the file and returns them as a string.
+     *
+     * @param filename The path to the file to read.
+     * @return The contents of the file as a std::string. If reading fails, an empty string is returned.
+     *
+     * @throws std::runtime_error if the file operation fails.
+     */
+    [[nodiscard]] virtual std::string getContents(const std::string& filename) const = 0;
 
+    /**
+     * @brief Attempts to read the entire contents of the file into the provided string.
+     *
+     * @param filename The path to the file to read.
+     * @param contents Output parameter receiving the file contents on success.
+     * @return true if reading succeeded and `contents` was populated, otherwise false.
+     */
+    [[nodiscard]] virtual bool readInto(const std::string& filename, std::string& contents) const noexcept = 0;
+};
 
-    public:
-        virtual ~StringFileReader() = default;
-
-        /**
-         * Default constructor.
-         */
-        StringFileReader() = default;
-
-        /**
-         * @brief Reads the entire contents of the file and returns them as a string.
-         *
-         * @param filename The path to the file to read.
-         * @return The contents of the file as a std::string. If reading fails, an empty string is returned.
-         *
-         * @throws std::runtime_error if the file operation fails.
-         */
-        [[nodiscard]] virtual std::string getContents(const std::string& filename) const  = 0;
-
-        /**
-         * @brief Attempts to read the entire contents of the file into the provided string.
-         *
-         * @param filename The path to the file to read.
-         * @param contents Output parameter receiving the file contents on success.
-         * @return true if reading succeeded and `contents` was populated, otherwise false.
-         */
-        [[nodiscard]] virtual bool readInto( const std::string& filename,  std::string& contents) const noexcept = 0;
-
-
-    };
-
-
-}
+} // namespace helios::core::io

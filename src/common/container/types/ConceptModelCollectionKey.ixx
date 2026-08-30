@@ -10,18 +10,16 @@ export module helios.core.common.container.types:ConceptModelCollectionKey;
 
 export namespace helios::core::common::container::types {
 
-    /**
-     * @brief Simple key struct for ConceptModelCollections, stores the typeId and the insertion index.
-     * @tparam TTypeIdProvider
-     */
-    template<typename TTypeIdProvider>
-    struct ConceptModelCollectionKey {
+/**
+ * @brief Simple key struct for ConceptModelCollections, stores the typeId and the insertion index.
+ * @tparam TTypeIdProvider
+ */
+template <typename TTypeIdProvider>
+struct ConceptModelCollectionKey {
 
-        TTypeIdProvider typeId;
+    TTypeIdProvider typeId;
 
-        std::size_t index;
+    std::size_t index;
+};
 
-    };
-
-
-}
+} // namespace helios::core::common::container::types
