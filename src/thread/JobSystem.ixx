@@ -57,7 +57,7 @@ public:
      * @param maxWorkerCount Number of worker threads to create.
      *                       Typically `std::thread::hardware_concurrency()`.
      */
-    explicit JobSystem(std::size_t maxWorkerCount) : maxWorkerCount_(maxWorkerCount) {
+    explicit JobSystem(const std::size_t maxWorkerCount) : maxWorkerCount_(maxWorkerCount) {
 
         workerThreads_.reserve(maxWorkerCount);
 
@@ -67,7 +67,7 @@ public:
                     std::function<void()> job;
 
                     {
-                        std::unique_lock<std::mutex> lock(mutex_);
+                        std::unique_lock lock(mutex_);
 
                         if (!jobCondition_.wait(lock, stopToken, [&] { return !jobQueue_.empty(); })) {
                             return;
@@ -96,7 +96,7 @@ public:
      * @warning Must not be called concurrently from multiple threads.
      */
     template <typename Fn>
-    void runAndWait(std::size_t jobCount, Fn&& fn) {
+    void runAndWait(const std::size_t jobCount, Fn&& fn) {
         {
             std::scoped_lock lock(mutex_);
 
@@ -108,7 +108,7 @@ public:
                     fn(i);
 
                     {
-                        std::scoped_lock lok(mutex_);
+                        std::scoped_lock lockInt(mutex_);
                         --pendingJobCount_;
                     }
 
@@ -119,7 +119,7 @@ public:
 
         jobCondition_.notify_all();
 
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
 
         doneCondition_.wait(lock, [&] { return pendingJobCount_ == 0; });
     }
