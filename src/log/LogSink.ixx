@@ -5,6 +5,7 @@
 module;
 
 #include <string>
+#include <cstdint>
 
 export module helios.core.log.LogSink;
 
@@ -13,7 +14,7 @@ export namespace helios::core::log {
 /**
  * @brief Severity level for log messages.
  */
-enum class LogLevel { Debug, Info, Warn, Error };
+enum class LogLevel : std::uint8_t { Debug, Info, Warn, Error };
 
 /**
  * @brief Unique identifier type for log sinks.
