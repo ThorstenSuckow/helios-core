@@ -12,3 +12,4 @@ export import :TypeId;
 export import :TypeIndexer;
 export import :TypeErasedValueWrapper;
 export import :TypeErasedInlineValueWrapper;
+export import :TypeList;
