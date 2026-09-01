@@ -9,6 +9,8 @@ module;
 #include <memory>
 #include <utility>
 #include <vector>
+#include <iostream>
+#include "helios-core-config.h"
 
 export module helios.core.common.container:TypeMap;
 
@@ -173,6 +175,12 @@ public:
             return *inst;
         }
 
+#ifdef HELIOS_DEBUG
+        std::cerr
+           << "Resource not found: "
+           << typeid(TType).name()
+           << '\n';
+#endif
         assert(false && "Resource not found.");
         std::terminate();
     }
