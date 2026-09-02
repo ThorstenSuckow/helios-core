@@ -10,6 +10,11 @@ export namespace helios::core::common::types {
      * @tparam TTypes The types contained in the list.
      */
     template <typename... TTypes>
-    struct TypeList {};
+    struct TypeList {
+
+
+        template<typename T>
+        using Prepend = TypeList<T, TTypes...>;
+    };
 
 } // namespace helios::core::common::types
