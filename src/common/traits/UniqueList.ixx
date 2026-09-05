@@ -4,28 +4,11 @@ module;
 
 export module helios.core.common.traits:UniqueList;
 
+import :IsInList;
 import helios.core.common.types;
 
 export namespace helios::core::common::traits {
     
-    
-/**
- * @brief Primary template for Contains; membership test is available with its partial specialization.
- * @tparam TType The handle to check for.
- * @tparam TTail The list of handles to check within.
- */
-template <typename TType, typename TTail>
-struct Contains {};
-
-/**
- * @brief Partial specialization of Contains for checking if TType appears in List<TTail...>.
- * @tparam TType The handle for comparison.
- * @tparam TTail The element types contained in List.
- */
-template <typename TType, typename... TTail>
-struct Contains<TType, types::TypeList<TTail...>> {
-    static constexpr bool value = (std::is_same_v<TType, TTail> || ...);
-};
 
 /**
  * @brief Primary template for AppendIfUnique.
@@ -33,7 +16,7 @@ struct Contains<TType, types::TypeList<TTail...>> {
  * @tparam TList The list to check for duplicates.
  * @tparam exists true if TType already exists in TList, false otherwise.
  */
-template <typename TType, typename TList, bool exists = Contains<TType, TList>::value>
+template <typename TType, typename TList, bool exists = IsInList<TType, TList>::value>
 struct AppendIfUnique {};
 
 /**

@@ -22,9 +22,26 @@ struct IsInList<TNeedle> {
 
 template <typename TNeedle, typename First, typename... Rest>
 struct IsInList<TNeedle, First, Rest...> {
-    constexpr static bool value = std::same_as<TNeedle, First> || IsInList<TNeedle, Rest...>::value;
-    constexpr static std::size_t index = std::same_as<TNeedle, First> ? 0 : 1 + IsInList<TNeedle, Rest...>::index;
+    constexpr static bool value = std::same_as<TNeedle, First>
+        || IsInList<TNeedle, Rest...>::value;
+
+    constexpr static std::size_t index = std::same_as<TNeedle, First>
+        ? 0
+        : 1 + IsInList<TNeedle, Rest...>::index;
 };
+
+template <typename TNeedle, typename First, typename... Rest>
+struct IsInList<TNeedle, types::TypeList<First, Rest...>> {
+
+    constexpr static bool value = std::same_as<TNeedle, First>
+        || IsInList<TNeedle, types::TypeList<Rest...>>::value;
+
+    constexpr static std::size_t index = std::same_as<TNeedle, First>
+        ? 0
+        : 1 + IsInList<TNeedle, types::TypeList<Rest...>>::index;
+};
+
+
 
 template <typename TLeft, typename TRight>
 struct IsSubset;
