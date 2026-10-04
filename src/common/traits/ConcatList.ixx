@@ -17,16 +17,15 @@ export namespace helios::core::common::traits {
     };
 
 
-    template<typename TList>
-    struct ConcatList<TList> {
-        using list = TList;
+    template<typename... TElements>
+    struct ConcatList<types::TypeList<TElements...>> {
+        using list = types::TypeList<TElements...>;
     };
 
-    template<typename ... TFirst, typename ... TSecond>
-    struct ConcatList<types::TypeList<TFirst...>, types::TypeList<TSecond...>> {
+    template<typename ... TLeft, typename ... TRight, typename ... TRest>
+    struct ConcatList<types::TypeList<TLeft...>, types::TypeList<TRight...>, TRest...> {
 
-        using list = types::TypeList<TFirst..., TSecond...>;
+        using list = ConcatList<types::TypeList<TLeft..., TRight...>, TRest...>::list;
 
     };
-
 }
