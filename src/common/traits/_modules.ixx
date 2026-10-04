@@ -10,3 +10,4 @@ export import :ExclusionList;
 export import :ConcatList;
 export import :WrapElements;
 export import :ListToTuple;
+export import :Apply;
