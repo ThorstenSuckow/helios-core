@@ -12,3 +12,4 @@ export import helios.core.common.container;
 
 export import :Guid;
 export import :Random;
+export import helios.core.common.DynamicBitSet;
