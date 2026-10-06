@@ -90,6 +90,29 @@ class TypeMap {
         return false;
     }
 
+    template <typename TType, typename ... Args>
+    auto& emplaceOwned(Args&&... args) {
+
+        using Type = std::remove_cvref_t<TType>;
+        auto typeId = TypeMapItemTypeId::template id<Type>();
+        auto idx = typeId.value();
+
+        auto model = std::make_unique<OwnedModel<Type>>(std::forward<Args>(args)...);
+
+        if (ownedModels_.size() <= idx) {
+            ownedModels_.resize(idx + 1);
+        }
+
+        if (ownedModels_[idx]) [[unlikely]] {
+            assert(false && "Resource already registered.");
+            std::terminate();
+        }
+
+        ownedModels_[idx] = std::move(model);
+
+        return (static_cast<OwnedModel<Type>&>(*ownedModels_[idx])).type();
+    }
+
     bool clearable_ = false;
 
 public:
@@ -135,32 +158,19 @@ public:
 
     template <typename TType, typename... Args>
     TType& emplace(Args&&... args) {
-        return emplace<TType>(TType{std::forward<Args>(args)...});
+        return emplaceOwned<TType>(std::forward<Args>(args)...);
     }
 
-    template <typename TType>
-        requires(!std::is_lvalue_reference_v<TType>)
+    template<typename TType>
+    requires (!std::is_lvalue_reference_v<TType>)
     auto& emplace(TType&& typeToEmplace) {
-
         using Type = std::remove_cvref_t<TType>;
-        auto typeId = TypeMapItemTypeId::template id<Type>();
-        auto idx = typeId.value();
 
-        auto model = std::make_unique<OwnedModel<Type>>(std::forward<TType>(typeToEmplace));
-
-        if (ownedModels_.size() <= idx) {
-            ownedModels_.resize(idx + 1);
-        }
-
-        if (ownedModels_[idx]) [[unlikely]] {
-            assert(false && "Resource already registered.");
-            std::terminate();
-        }
-
-        ownedModels_[idx] = std::move(model);
-
-        return (static_cast<OwnedModel<Type>&>(*ownedModels_[idx])).type();
+        return emplaceOwned<Type>(
+            std::forward<TType>(typeToEmplace)
+        );
     }
+
 
     template <typename TType>
     TType& get() {
