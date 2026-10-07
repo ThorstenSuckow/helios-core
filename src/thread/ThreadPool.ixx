@@ -134,9 +134,13 @@ export namespace helios::core::thread {
         ThreadPool(ThreadPool&&) = delete;
         ThreadPool& operator=(ThreadPool&&) = delete;
 
-        ThreadPool(const auto numThreads = std::thread::hardware_concurrency())
+        ThreadPool(const std::size_t numThreads = std::thread::hardware_concurrency())
             : running_(true),
             joinThreads_(threads_) {
+
+            queues_.reserve(numThreads);
+            threads_.reserve(numThreads);
+
             try {
                 for (unsigned i = 0; i < numThreads; ++i) {
                     queues_.emplace_back(std::make_unique<WorkStealingQueue>());
