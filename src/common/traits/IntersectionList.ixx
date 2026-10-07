@@ -23,6 +23,7 @@ export namespace helios::core::common::traits {
         using list = types::TypeList<>;
     };
 
+
     template <typename THead, typename ... TLeft, typename ... TRight>
     struct IntersectionList<
         types::TypeList<THead, TLeft...>,
@@ -44,5 +45,13 @@ export namespace helios::core::common::traits {
         >;
     };
 
+    template<typename TLeft, typename TRight, typename TNext, typename ... TRest>
+    struct IntersectionList<TLeft, TRight, TNext, TRest...> {
+        using list = typename IntersectionList<
+            typename IntersectionList<TLeft, TRight>::list,
+            TNext, TRest...
+        >::list;
+
+    };
 
 }
