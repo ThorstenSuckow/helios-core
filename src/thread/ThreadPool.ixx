@@ -134,7 +134,7 @@ export namespace helios::core::thread {
         ThreadPool(ThreadPool&&) = delete;
         ThreadPool& operator=(ThreadPool&&) = delete;
 
-        ThreadPool(const std::size_t numThreads = std::thread::hardware_concurrency())
+        ThreadPool(const std::size_t numThreads)
             : running_(true),
             joinThreads_(threads_) {
 
