@@ -23,6 +23,11 @@ export namespace helios::core::common::container {
  *
  * Allows for borrowing other type maps for inspecting other TypeMap's data.
  * Data can be bound by references or completely owned by the TypeMap.
+ *
+ * @note The type map is not considered threadsafe. For concurrent access it is advised to
+ * use the method `replace()` and make sure types to replace are registered first via `reserve()`.
+ * When concurrently calling replace(), callers are advised to make sure submitted types
+ * are mutual exclusive.
  */
 template <typename TDomain>
 class TypeMap {
@@ -132,7 +137,39 @@ public:
         return *this;
     }
 
-    template <typename TType>
+    template<typename TType>
+    void reserve() {
+        using Type = std::remove_cvref_t<TType>;
+        auto typeId = TypeMapItemTypeId::template id<Type>();
+        auto idx = typeId.value();
+
+        if (ownedModels_.size() <= idx) {
+            ownedModels_.resize(idx + 1);
+        }
+    }
+
+    template<typename TType, typename... Args>
+    auto& replace(Args&&... args) {
+
+        using Type = std::remove_cvref_t<TType>;
+        const auto idx = TypeMapItemTypeId::template id<Type>().value();
+
+        auto& foo = ownedModels_;
+
+        assert(idx < ownedModels_.size() && "Storage for type ist not available.");
+
+        auto model = std::make_unique<OwnedModel<Type>>(
+            std::forward<Args>(args)...
+        );
+
+        auto& result = model->type();
+
+        ownedModels_[idx] = std::move(model);
+
+        return result;
+    }
+
+    template<typename TType>
     TType& bind(TType& type) {
 
         using Type = std::remove_cvref_t<TType>;
