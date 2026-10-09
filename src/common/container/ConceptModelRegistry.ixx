@@ -24,6 +24,7 @@ template <typename TWrapperType, typename IdProvider>
 class ConceptModelRegistry {
 
     mutable std::vector<std::unique_ptr<TWrapperType>> items_;
+    std::vector<bool> registeredIndices_;
     std::vector<void*> underlyingAnyT_;
     std::vector<size_t> insertionOrder_;
     mutable std::vector<TWrapperType*> itemView_;
@@ -39,7 +40,9 @@ class ConceptModelRegistry {
         itemView_.reserve(insertionOrder_.size());
 
         for (const auto insertionIndex : insertionOrder_) {
-            itemView_.push_back(items_[insertionIndex].get());
+            if (items_[insertionIndex]) {
+                itemView_.push_back(items_[insertionIndex].get());
+            }
         }
 
         needsUpdate_ = false;
@@ -91,11 +94,63 @@ public:
 
         const auto idx = IdProvider::template id<TConcreteType>().value();
 
+        reserve<TConcreteType>();
+
+        items_[idx] = std::make_unique<TWrapperType>(std::move(wrapper));
+
+        void* rawUnderlying = items_[idx]->underlying();
+        underlyingAnyT_[idx] = rawUnderlying;
+
+        needsUpdate_ = true;
+        return *static_cast<TConcreteType*>(rawUnderlying);
+    }
+
+    void invalidateView() {
+        needsUpdate_ = true;
+    }
+
+    /**
+     * Reserves a slot for an item to make sure a concurrent call to replace()
+     * for that exact item type does not produce unwanted race conditions.
+     * @tparam TConcreteType
+     */
+    template<typename TConcreteType>
+    void reserve() {
+        const auto idx = IdProvider::template id<TConcreteType>().value();
+
         if (items_.size() <= idx) {
             items_.resize(idx + 1);
         }
         if (underlyingAnyT_.size() <= idx) {
             underlyingAnyT_.resize(idx + 1);
+        }
+        if (registeredIndices_.size() <= idx) {
+            registeredIndices_.resize(idx + 1, false);
+        }
+
+        if (!registeredIndices_[idx]) {
+            insertionOrder_.push_back(idx);
+            needsUpdate_ = true;
+            registeredIndices_[idx] = true;
+        }
+    }
+
+
+    /**
+     * @brief Replaces an existing item or a previously reserved index with a concrete type.
+     *
+     * @tparam TConcreteType
+     * @param wrapper
+     * @return
+     */
+    template<typename TConcreteType>
+    TConcreteType& replace(TWrapperType&& wrapper) {
+
+        const auto idx = IdProvider::template id<TConcreteType>().value();
+
+        if (registeredIndices_.size() <= idx || !registeredIndices_[idx]) {
+            assert(false && "TWrapperType not registered.");
+            std::terminate();
         }
 
         items_[idx] = std::make_unique<TWrapperType>(std::move(wrapper));
@@ -103,9 +158,6 @@ public:
         void* rawUnderlying = items_[idx]->underlying();
         underlyingAnyT_[idx] = rawUnderlying;
 
-        insertionOrder_.push_back(idx);
-
-        needsUpdate_ = true;
         return *static_cast<TConcreteType*>(rawUnderlying);
     }
 
@@ -118,12 +170,7 @@ public:
     TConcreteType& add(TWrapperType&& wrapper) {
         const auto idx = IdProvider::template id<TConcreteType>().value();
 
-        if (items_.size() <= idx) {
-            items_.resize(idx + 1);
-        }
-        if (underlyingAnyT_.size() <= idx) {
-            underlyingAnyT_.resize(idx + 1);
-        }
+        reserve<TConcreteType>();
 
         assert(!has<TConcreteType>() && "TWrapperType already registered.");
 
@@ -132,7 +179,6 @@ public:
         void* rawUnderlying = items_[idx]->underlying();
         underlyingAnyT_[idx] = rawUnderlying;
 
-        insertionOrder_.push_back(idx);
         needsUpdate_ = true;
 
         return *static_cast<TConcreteType*>(rawUnderlying);
