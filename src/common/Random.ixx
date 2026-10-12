@@ -29,7 +29,7 @@ private:
     /**
      * @brief The Mersenne Twister pseudo-random number generator.
      */
-    std::mt19937 gen_;
+    std::mt19937_64 gen_;
 
     /**
      * @brief Uniform real distribution for generating floating-point numbers.
@@ -59,7 +59,7 @@ public:
      *
      * @param seed The seed value for the random number generator.
      */
-    explicit Random(uint32_t seed) : gen_(seed), initialSeed_(seed) {};
+    explicit Random(uint64_t seed) : gen_(seed), initialSeed_(seed) {};
 
     /**
      * @brief Resets the generator to its initial state.
