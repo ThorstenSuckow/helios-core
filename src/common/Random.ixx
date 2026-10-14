@@ -51,7 +51,7 @@ private:
      * @details Stored for use by `reset()` to restore the generator to its
      * initial state.
      */
-    uint32_t initialSeed_;
+    uint64_t initialSeed_;
 
 public:
     /**
