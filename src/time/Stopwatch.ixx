@@ -40,27 +40,27 @@ public:
         start_ = std::chrono::steady_clock::now();
     }
 
-    /**
-     * @brief Returns the time elapsed since start() was called.
-     *
-     * @return The elapsed time in milliseconds as a floating point value.
-     */
-    [[nodiscard]] float elapsedMs() const noexcept {
-        auto end = std::chrono::steady_clock::now();
-        // Wichtig: Expliziter Cast zu float Millisekunden
-        std::chrono::duration<float, std::milli> duration = end - start_;
-        return duration.count();
+
+    [[nodiscard]] std::chrono::nanoseconds::rep elapsedNanoseconds() const noexcept {
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - start_
+        ).count();
     }
 
-    /**
-     * @brief Returns the time elapsed in seconds.
-     *
-     * @return The elapsed time in seconds as a floating point value.
-     */
-    [[nodiscard]] float elapsedSeconds() const noexcept {
-        auto end = std::chrono::steady_clock::now();
-        std::chrono::duration<float> duration = end - start_;
-        return duration.count();
+
+    [[nodiscard]] std::chrono::milliseconds::rep elapsedMilliseconds() const noexcept {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start_
+        ).count();
     }
+
+
+    template<typename T = double>
+    [[nodiscard]] T elapsedSeconds() const noexcept {
+        return std::chrono::duration<T>(
+            std::chrono::steady_clock::now() - start_
+        ).count();
+    }
+
 };
 } // namespace helios::core::time
