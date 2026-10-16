@@ -1,6 +1,8 @@
 module;
 
 #include <atomic>
+#include <condition_variable>
+#include <cstddef>
 #include <deque>
 #include <future>
 #include <latch>
@@ -54,7 +56,15 @@ export namespace helios::core::thread {
      *
      * The latch associated with this runAndWait() invocation reaches zero once
      * all three group tasks have completed. While waiting, the calling thread
-     * repeatedly invokes runPendingTask() instead of blocking.
+     * repeatedly invokes runPendingTask(), executing available tasks or yielding
+     * when no work is available.
+     *
+     * Idle worker threads initially poll for pending tasks. After
+     * spinBeforeSleep_ unsuccessful attempts, they wait on a condition variable.
+     * When a new task is submitted, one waiting worker is notified.
+     *
+     * This hybrid polling and sleeping strategy reduces CPU utilization during
+     * idle periods while avoiding the wake-up overhead for short idle intervals.
      *
      * A worker searches for pending work in the following order:
      *
@@ -88,6 +98,24 @@ export namespace helios::core::thread {
         using TaskType =  FunctionWrapper;
         std::atomic<bool> running_ = true;
 
+        /**
+         * @brief Number of unsuccessful polls a worker performs (yielding) before it goes to sleep.
+         *
+         * Keeps wake-up latency low for tasks that are submitted in quick succession
+         * (e.g. consecutive parallel system groups), while idle workers stop consuming CPU.
+         * A value of `std::numeric_limits<unsigned int>::max()` effectively disables
+         * sleeping (pure busy-polling).
+         */
+        const unsigned int spinBeforeSleep_;
+
+        /**
+         * @brief Number of tasks that were submitted but not yet taken for execution.
+         */
+        std::atomic<std::size_t> pendingTasks_{0};
+
+        std::mutex sleepMutex_;
+        std::condition_variable wakeCv_;
+
         ThreadSafeQueue<TaskType> poolWorkQueue_;
 
         std::vector<std::unique_ptr<WorkStealingQueue>> queues_;
@@ -102,9 +130,54 @@ export namespace helios::core::thread {
         void workerThread(const unsigned int threadId) {
             localThreadId_ = threadId;
             localWorkQueue_ = queues_[localThreadId_].get();
+
+            std::size_t idlePolls = 0;
+
             while (running_) {
-                runPendingTask();
+                if (tryRunPendingTask()) {
+                    idlePolls = 0;
+                    continue;
+                }
+
+                if (++idlePolls < spinBeforeSleep_) {
+                    std::this_thread::yield();
+                    continue;
+                }
+
+                // Sleep until work is submitted or the pool shuts down.
+                // The predicate is evaluated while holding sleepMutex_ ; submit() increments
+                // pendingTasks_ before it acquires the same mutex to notify.
+                {
+                    std::unique_lock<std::mutex> lock(sleepMutex_);
+                    wakeCv_.wait(lock, [this] {
+                        return !running_ || pendingTasks_.load() > 0;
+                    });
+                }
+                idlePolls = 0;
             }
+        }
+
+        void wakeWorkers(const bool all) {
+            // Acquiring the mutex orders this notification after a worker
+            // that is between its predicate check and wait().
+            { std::lock_guard<std::mutex> lock(sleepMutex_); }
+            if (all) {
+                wakeCv_.notify_all();
+            } else {
+                wakeCv_.notify_one();
+            }
+        }
+
+        bool tryRunPendingTask() {
+            TaskType task;
+            if (popTaskFromLocalQueue(task) ||
+                popTaskFromPoolQueue(task) ||
+                popTaskFromOtherThreadQueue(task)) {
+                pendingTasks_.fetch_sub(1);
+                task();
+                return true;
+            }
+            return false;
         }
 
         bool popTaskFromLocalQueue(TaskType& task) {
@@ -134,8 +207,24 @@ export namespace helios::core::thread {
         ThreadPool(ThreadPool&&) = delete;
         ThreadPool& operator=(ThreadPool&&) = delete;
 
-        ThreadPool(const std::size_t numThreads)
+        /**
+         * @brief Default number of idle polls before a worker goes to sleep.
+         */
+        static constexpr unsigned int DEFAULT_SPIN_BEFORE_SLEEP = 256;
+
+        /**
+         * @param numThreads Number of worker threads. The calling thread of runAndWait()
+         *        additionally executes tasks while it waits.
+         * @param spinBeforeSleep Number of unsuccessful polls (yielding) before an idle worker
+         *        sleeps on a condition variable. Pass `std::numeric_limits<unsigned int>::max()`
+         *        to disable sleeping (busy-polling).
+         */
+        explicit ThreadPool(
+            const std::size_t numThreads,
+            const unsigned int spinBeforeSleep = DEFAULT_SPIN_BEFORE_SLEEP
+        )
             : running_(true),
+            spinBeforeSleep_(spinBeforeSleep),
             joinThreads_(threads_) {
 
             queues_.reserve(numThreads);
@@ -150,11 +239,20 @@ export namespace helios::core::thread {
                 }
             } catch (...) {
                 running_ = false;
+                wakeWorkers(true);
                 throw;
             }
         }
+
         ~ThreadPool() {
             running_ = false;
+            // sleeping workers must be woken up, otherwise join() would block forever
+            wakeWorkers(true);
+            for (auto& thread : threads_) {
+                if (thread.joinable()) {
+                    thread.join();
+                }
+            }
         }
 
 
@@ -167,11 +265,16 @@ export namespace helios::core::thread {
 
             TaskType task{std::move(packagedTask)};
 
+            // must be incremented before the task becomes visible to other threads
+            pendingTasks_.fetch_add(1);
+
             if (localWorkQueue_) {
                 localWorkQueue_->push(std::move(task));
             } else {
                 poolWorkQueue_.push(std::move(task));
             }
+
+            wakeWorkers(false);
             return future;
         }
 
@@ -208,12 +311,7 @@ export namespace helios::core::thread {
 
 
         void runPendingTask() {
-            TaskType task;
-            if (popTaskFromLocalQueue(task) ||
-                popTaskFromPoolQueue(task) ||
-                popTaskFromOtherThreadQueue(task)) {
-                task();
-            } else {
+            if (!tryRunPendingTask()) {
                 std::this_thread::yield();
             }
         }
