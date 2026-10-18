@@ -212,7 +212,7 @@ export namespace helios::core::thread {
         /**
          * @brief Default time in ms the worker polls (yielding) before an idle worker goes to sleep.
          */
-        static constexpr unsigned int DEFAULT_WAIT_BEFORE_SLEEP = 20;
+        static constexpr std::chrono::milliseconds DEFAULT_WAIT_BEFORE_SLEEP{20};
 
         /**
          * @param numThreads Number of worker threads. The calling thread of runAndWait()
@@ -222,7 +222,7 @@ export namespace helios::core::thread {
          */
         explicit ThreadPool(
             const std::size_t numThreads,
-            const unsigned int waitBeforeSleep = DEFAULT_WAIT_BEFORE_SLEEP
+            const std::chrono::milliseconds waitBeforeSleep = DEFAULT_WAIT_BEFORE_SLEEP
         )
             : running_(true),
             waitBeforeSleep_(waitBeforeSleep),
