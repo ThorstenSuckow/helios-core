@@ -10,6 +10,7 @@ module;
 #include <thread>
 #include <vector>
 #include <type_traits>
+#include <chrono>
 
 
 export module helios.core.thread.ThreadPool;
@@ -60,7 +61,7 @@ export namespace helios::core::thread {
      * when no work is available.
      *
      * Idle worker threads initially poll for pending tasks. After
-     * spinBeforeSleep_ unsuccessful attempts, they wait on a condition variable.
+     * waitBeforeSleep_ runs out with unsuccessful attempts, they wait on a condition variable.
      * When a new task is submitted, one waiting worker is notified.
      *
      * This hybrid polling and sleeping strategy reduces CPU utilization during
@@ -99,14 +100,14 @@ export namespace helios::core::thread {
         std::atomic<bool> running_ = true;
 
         /**
-         * @brief Number of unsuccessful polls a worker performs (yielding) before it goes to sleep.
+         * @brief Number of milliseconds a worker performs (yielding) before it goes to sleep.
          *
          * Keeps wake-up latency low for tasks that are submitted in quick succession
          * (e.g. consecutive parallel system groups), while idle workers stop consuming CPU.
-         * A value of `std::numeric_limits<unsigned int>::max()` effectively disables
-         * sleeping (pure busy-polling).
+         * Align to expected fps to prevent workers form being successively being put to sleep and
+         * waken up which may cost unnecessary system calls..
          */
-        const unsigned int spinBeforeSleep_;
+        std::chrono::milliseconds waitBeforeSleep_{20};
 
         /**
          * @brief Number of tasks that were submitted but not yet taken for execution.
@@ -131,15 +132,16 @@ export namespace helios::core::thread {
             localThreadId_ = threadId;
             localWorkQueue_ = queues_[localThreadId_].get();
 
-            std::size_t idlePolls = 0;
+            using Clock =  std::chrono::steady_clock;
+            auto idleSince = Clock::now();
 
             while (running_) {
                 if (tryRunPendingTask()) {
-                    idlePolls = 0;
+                    idleSince = Clock::now();
                     continue;
                 }
 
-                if (++idlePolls < spinBeforeSleep_) {
+                if (Clock::now() - idleSince < waitBeforeSleep_) {
                     std::this_thread::yield();
                     continue;
                 }
@@ -153,7 +155,7 @@ export namespace helios::core::thread {
                         return !running_ || pendingTasks_.load() > 0;
                     });
                 }
-                idlePolls = 0;
+                idleSince = Clock::now();
             }
         }
 
@@ -208,23 +210,22 @@ export namespace helios::core::thread {
         ThreadPool& operator=(ThreadPool&&) = delete;
 
         /**
-         * @brief Default number of idle polls before a worker goes to sleep.
+         * @brief Default time in ms the worker polls (yielding) before an idle worker goes to sleep.
          */
-        static constexpr unsigned int DEFAULT_SPIN_BEFORE_SLEEP = 256;
+        static constexpr unsigned int DEFAULT_WAIT_BEFORE_SLEEP = 20;
 
         /**
          * @param numThreads Number of worker threads. The calling thread of runAndWait()
          *        additionally executes tasks while it waits.
-         * @param spinBeforeSleep Number of unsuccessful polls (yielding) before an idle worker
-         *        sleeps on a condition variable. Pass `std::numeric_limits<unsigned int>::max()`
-         *        to disable sleeping (busy-polling).
+         * @param waitBeforeSleep Time in ms the worker polls (yielding) before an idle worker
+         *        sleeps on a condition variable.
          */
         explicit ThreadPool(
             const std::size_t numThreads,
-            const unsigned int spinBeforeSleep = DEFAULT_SPIN_BEFORE_SLEEP
+            const unsigned int waitBeforeSleep = DEFAULT_WAIT_BEFORE_SLEEP
         )
             : running_(true),
-            spinBeforeSleep_(spinBeforeSleep),
+            waitBeforeSleep_(waitBeforeSleep),
             joinThreads_(threads_) {
 
             queues_.reserve(numThreads);
