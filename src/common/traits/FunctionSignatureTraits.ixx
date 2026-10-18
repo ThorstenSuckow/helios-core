@@ -30,14 +30,19 @@ template <typename>
 struct FunctionSignatureTraits;
 
 template <typename TResult, typename TClass, typename... TArgs>
-struct FunctionSignatureTraits<TResult (TClass::*)(TArgs...) noexcept>
+struct FunctionSignatureTraits<TResult (TClass::*)(TArgs...)>
     : FunctionSignatureTraitsBase<TResult, TArgs...> {};
+
+template <typename TResult, typename TClass, typename... TArgs>
+struct FunctionSignatureTraits<TResult (TClass::*)(TArgs...) const>
+    : FunctionSignatureTraitsBase<TResult, TArgs...> {};
+
+template <typename TResult, typename TClass, typename... TArgs>
+struct FunctionSignatureTraits<TResult (TClass::*)(TArgs...)  noexcept>
+    : FunctionSignatureTraits<TResult (TClass::*)(TArgs...)> {};
 
 template <typename TResult, typename TClass, typename... TArgs>
 struct FunctionSignatureTraits<TResult (TClass::*)(TArgs...) const noexcept>
-    : FunctionSignatureTraitsBase<TResult, TArgs...> {};
-
-template <typename TResult, typename TClass, typename... TArgs>
-struct FunctionSignatureTraits<TResult (TClass::*)(TArgs...) const> : FunctionSignatureTraitsBase<TResult, TArgs...> {};
+    : FunctionSignatureTraits<TResult (TClass::*)(TArgs...) const> {};
 
 } // namespace helios::core::common::traits
