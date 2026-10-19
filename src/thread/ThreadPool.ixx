@@ -109,6 +109,8 @@ export namespace helios::core::thread {
          */
         std::chrono::milliseconds waitBeforeSleep_{20};
 
+        std::size_t spinDuration_{1024};
+
         /**
          * @brief Number of tasks that were submitted but not yet taken for execution.
          */
@@ -133,12 +135,27 @@ export namespace helios::core::thread {
             localWorkQueue_ = queues_[localThreadId_].get();
 
             using Clock =  std::chrono::steady_clock;
+            bool waitPhaseStarted = false;
             auto idleSince = Clock::now();
+
+            std::size_t spinCount = 0;
+
 
             while (running_) {
                 if (tryRunPendingTask()) {
-                    idleSince = Clock::now();
+                    spinCount = 0;
+                    waitPhaseStarted = false;
                     continue;
+                }
+
+                if (spinCount < spinDuration_) {
+                    ++spinCount;
+                    continue;
+                }
+
+                if (!waitPhaseStarted) {
+                    waitPhaseStarted = true;
+                    idleSince = Clock::now();
                 }
 
                 if (Clock::now() - idleSince < waitBeforeSleep_) {
@@ -155,7 +172,8 @@ export namespace helios::core::thread {
                         return !running_ || pendingTasks_.load() > 0;
                     });
                 }
-                idleSince = Clock::now();
+                spinCount = 0;
+                waitPhaseStarted = false;
             }
         }
 
