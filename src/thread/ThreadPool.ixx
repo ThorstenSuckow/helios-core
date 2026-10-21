@@ -57,12 +57,26 @@ export namespace helios::core::thread {
      *
      * The latch associated with this runAndWait() invocation reaches zero once
      * all three group tasks have completed. While waiting, the calling thread
-     * repeatedly invokes runPendingTask(), executing available tasks or yielding
-     * when no work is available.
+     * repeatedly executes available tasks or yields when no work is available.
      *
      * Idle worker threads initially poll for pending tasks. After
      * waitBeforeSleep_ runs out with unsuccessful attempts, they wait on a condition variable.
-     * When a new task is submitted, one waiting worker is notified.
+     *
+     * A sleeping worker is only notified if more tasks are pending than threads are
+     * currently searching for work. Searching threads are idle workers in their polling
+     * phase and callers of runAndWait() waiting for their task group; threads executing
+     * a task do not count as searching. The check is performed when a task is submitted
+     * and whenever a searching thread takes a task, so that the number of awake workers
+     * grows step by step with the number of pending tasks, while no worker is woken if
+     * the searching threads suffice.
+     *
+     * At most maxPolling_ idle workers poll simultaneously. An idle worker has to reserve
+     * one of these polling slots; a worker that does not obtain a slot goes to sleep
+     * immediately. Without this limit, several polling workers share the few available
+     * tasks, each of them repeatedly resets its idle timer, and none of them ever reaches
+     * waitBeforeSleep_. The limit only restricts idle workers, not the number of workers
+     * executing tasks: a worker taking a task releases its slot, which allows further
+     * workers to be woken if more tasks are pending.
      *
      * This hybrid polling and sleeping strategy reduces CPU utilization during
      * idle periods while avoiding the wake-up overhead for short idle intervals.
@@ -104,8 +118,8 @@ export namespace helios::core::thread {
          *
          * Keeps wake-up latency low for tasks that are submitted in quick succession
          * (e.g. consecutive parallel system groups), while idle workers stop consuming CPU.
-         * Align to expected fps to prevent workers form being successively being put to sleep and
-         * waken up which may cost unnecessary system calls..
+         * Align to expected fps to prevent workers from successively being put to sleep and
+         * woken up, which may cost unnecessary system calls.
          */
         std::chrono::milliseconds waitBeforeSleep_{20};
 
@@ -115,6 +129,32 @@ export namespace helios::core::thread {
          * @brief Number of tasks that were submitted but not yet taken for execution.
          */
         std::atomic<std::size_t> pendingTasks_{0};
+
+        /**
+         * @brief Number of threads currently searching for work.
+         *
+         * Counts idle workers in their polling phase and callers of runAndWait()
+         * waiting for their task group. Threads executing a task are not counted.
+         */
+        std::atomic<std::size_t> searching_{0};
+
+        /**
+         * @brief Number of workers waiting on wakeCv_.
+         */
+        std::atomic<std::size_t> sleeping_{0};
+
+        /**
+         * @brief Number of reserved polling slots, i.e. idle workers in their polling phase.
+         *
+         * Unlike searching_, callers of runAndWait() are not counted.
+         * Invariant: 0 <= polling_ <= maxPolling_.
+         */
+        std::atomic<std::size_t> polling_{0};
+
+        /**
+         * @brief Maximum number of idle workers that poll for tasks simultaneously.
+         */
+        std::size_t maxPolling_{1};
 
         std::mutex sleepMutex_;
         std::condition_variable wakeCv_;
@@ -130,6 +170,46 @@ export namespace helios::core::thread {
         inline static thread_local  WorkStealingQueue* localWorkQueue_;
         inline static thread_local  std::size_t localThreadId_;
 
+        /**
+         * @brief Wakes one sleeping worker if more tasks are pending than threads are searching.
+
+         */
+        void wakeIfNeeded() {
+            if (sleeping_.load() > 0 && pendingTasks_.load() > searching_.load()) {
+                wakeWorkers(false);
+            }
+        }
+
+        /**
+         * @brief Executes a task taken by a searching thread.
+         *
+         * The thread stops searching for the duration of the task. Since this may leave
+         * pending tasks without a searching thread, another worker is woken if required.
+         */
+        void runAsSearcher(TaskType& task) {
+            pendingTasks_.fetch_sub(1);
+            searching_.fetch_sub(1);
+            wakeIfNeeded();
+            task();
+            searching_.fetch_add(1);
+        }
+
+        /**
+         * @brief Reserves a polling slot if fewer than maxPolling_ slots are taken.
+         *
+         * @return true if a slot was reserved; the caller must release it with
+         *         polling_.fetch_sub(1) when it stops polling.
+         */
+        [[nodiscard]] bool tryAcquirePollingSlot() noexcept {
+            auto current = polling_.load();
+            while (current < maxPolling_) {
+                if (polling_.compare_exchange_weak(current, current + 1)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         void workerThread(const unsigned int threadId) {
             localThreadId_ = threadId;
             localWorkQueue_ = queues_[localThreadId_].get();
@@ -140,41 +220,68 @@ export namespace helios::core::thread {
 
             std::size_t spinCount = 0;
 
+            searching_.fetch_add(1);
+            bool hasPollingSlot = tryAcquirePollingSlot();
 
             while (running_) {
-                if (tryRunPendingTask()) {
+                if (TaskType task; tryPopTask(task)) {
+                    if (hasPollingSlot) {
+                        polling_.fetch_sub(1);
+                        hasPollingSlot = false;
+                    }
+                    runAsSearcher(task);
+                    hasPollingSlot = tryAcquirePollingSlot();
                     spinCount = 0;
                     waitPhaseStarted = false;
                     continue;
                 }
 
-                if (spinCount < spinDuration_) {
-                    ++spinCount;
-                    continue;
-                }
+                // Only the holder of a polling slot polls; all other idle workers
+                // (including all but maxPolling_ workers right after pool construction)
+                // go to sleep immediately.
+                if (hasPollingSlot) {
+                    if (spinCount < spinDuration_) {
+                        ++spinCount;
+                        continue;
+                    }
 
-                if (!waitPhaseStarted) {
-                    waitPhaseStarted = true;
-                    idleSince = Clock::now();
-                }
+                    if (!waitPhaseStarted) {
+                        waitPhaseStarted = true;
+                        idleSince = Clock::now();
+                    }
 
-                if (Clock::now() - idleSince < waitBeforeSleep_) {
-                    std::this_thread::yield();
-                    continue;
+                    if (Clock::now() - idleSince < waitBeforeSleep_) {
+                        std::this_thread::yield();
+                        continue;
+                    }
+
+                    polling_.fetch_sub(1);
+                    hasPollingSlot = false;
                 }
 
                 // Sleep until work is submitted or the pool shuts down.
-                // The predicate is evaluated while holding sleepMutex_ ; submit() increments
-                // pendingTasks_ before it acquires the same mutex to notify.
+                // searching_ is decremented before the predicate reads pendingTasks_;
+                // see wakeIfNeeded() for why no wake-up can be lost.
+                searching_.fetch_sub(1);
                 {
                     std::unique_lock<std::mutex> lock(sleepMutex_);
+                    sleeping_.fetch_add(1);
                     wakeCv_.wait(lock, [this] {
                         return !running_ || pendingTasks_.load() > 0;
                     });
+                    sleeping_.fetch_sub(1);
                 }
+                searching_.fetch_add(1);
+                hasPollingSlot = tryAcquirePollingSlot();
+
                 spinCount = 0;
                 waitPhaseStarted = false;
             }
+
+            if (hasPollingSlot) {
+                polling_.fetch_sub(1);
+            }
+            searching_.fetch_sub(1);
         }
 
         void wakeWorkers(const bool all) {
@@ -188,16 +295,10 @@ export namespace helios::core::thread {
             }
         }
 
-        bool tryRunPendingTask() {
-            TaskType task;
-            if (popTaskFromLocalQueue(task) ||
-                popTaskFromPoolQueue(task) ||
-                popTaskFromOtherThreadQueue(task)) {
-                pendingTasks_.fetch_sub(1);
-                task();
-                return true;
-            }
-            return false;
+        bool tryPopTask(TaskType& task) {
+            return popTaskFromLocalQueue(task) ||
+                   popTaskFromPoolQueue(task) ||
+                   popTaskFromOtherThreadQueue(task);
         }
 
         bool popTaskFromLocalQueue(TaskType& task) {
@@ -293,7 +394,7 @@ export namespace helios::core::thread {
                 poolWorkQueue_.push(std::move(task));
             }
 
-            wakeWorkers(false);
+            wakeIfNeeded();
             return future;
         }
 
@@ -303,6 +404,9 @@ export namespace helios::core::thread {
 
             std::mutex exceptionMutex;
             std::exception_ptr exception;
+
+            // The caller searches for (its own) tasks while waiting for the group.
+            searching_.fetch_add(1);
 
             for (std::size_t i = 0; i < numTasks; ++i) {
                 submit([&, i]() {
@@ -319,8 +423,18 @@ export namespace helios::core::thread {
             }
 
             while (!done.try_wait()) {
-                runPendingTask();
+                if (TaskType task; tryPopTask(task)) {
+                    runAsSearcher(task);
+                } else {
+                    std::this_thread::yield();
+                }
             }
+
+            searching_.fetch_sub(1);
+
+            // The caller no longer takes tasks; pending tasks of other submitters
+            // may now require a sleeping worker.
+            wakeIfNeeded();
 
             if (exception) {
                 std::rethrow_exception(exception);
@@ -328,9 +442,18 @@ export namespace helios::core::thread {
         }
 
 
-
+        /**
+         * @brief Executes one pending task on the calling thread, or yields if none is available.
+         *
+         * The calling thread is not counted as searching; within the pool, runAndWait()
+         * uses its own loop for this purpose.
+         */
         void runPendingTask() {
-            if (!tryRunPendingTask()) {
+            if (TaskType task; tryPopTask(task)) {
+                pendingTasks_.fetch_sub(1);
+                wakeIfNeeded();
+                task();
+            } else {
                 std::this_thread::yield();
             }
         }
