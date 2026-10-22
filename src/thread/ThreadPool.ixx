@@ -168,6 +168,7 @@ export namespace helios::core::thread {
         JoinThreads joinThreads_;
 
         inline static thread_local  WorkStealingQueue* localWorkQueue_;
+        inline static thread_local  std::size_t localQueueIndex_;
         inline static thread_local  std::size_t localThreadId_;
 
         /**
@@ -211,8 +212,9 @@ export namespace helios::core::thread {
         }
 
         void workerThread(const unsigned int threadId) {
-            localThreadId_ = threadId;
-            localWorkQueue_ = queues_[localThreadId_].get();
+            localQueueIndex_ = threadId;
+            localThreadId_ = threadId + 1;
+            localWorkQueue_ = queues_[localQueueIndex_].get();
 
             using Clock =  std::chrono::steady_clock;
             bool waitPhaseStarted = false;
@@ -312,7 +314,7 @@ export namespace helios::core::thread {
         bool popTaskFromOtherThreadQueue(TaskType& task) {
 
             for (unsigned i = 0; i < queues_.size(); ++i) {
-                unsigned const threadId = (localThreadId_ + i + 1) % queues_.size();
+                unsigned const threadId = (localQueueIndex_ + i + 1) % queues_.size();
                 if (queues_[threadId]->trySteal(task)) {
                     return true;
                 }
@@ -332,6 +334,10 @@ export namespace helios::core::thread {
          * @brief Default time in ms the worker polls (yielding) before an idle worker goes to sleep.
          */
         static constexpr std::chrono::milliseconds DEFAULT_WAIT_BEFORE_SLEEP{20};
+
+        static std::size_t currentThreadId() noexcept {
+            return localThreadId_;
+        }
 
         /**
          * @param numThreads Number of worker threads. The calling thread of runAndWait()
