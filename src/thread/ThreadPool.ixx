@@ -11,6 +11,7 @@ module;
 #include <vector>
 #include <type_traits>
 #include <chrono>
+#include <cassert>
 
 
 export module helios.core.thread.ThreadPool;
@@ -405,28 +406,36 @@ export namespace helios::core::thread {
         }
 
         template<typename FunctionType>
-        void runAndWait(unsigned int numTasks, FunctionType f) {
+        void runAndWait(const unsigned int numTasks, FunctionType f) {
+
+            if (numTasks == 0) {
+                assert(false && "numTasks must be greater than 0");
+                return;
+            }
             std::latch done{numTasks};
 
             std::mutex exceptionMutex;
             std::exception_ptr exception;
 
-            // The caller searches for (its own) tasks while waiting for the group.
-            searching_.fetch_add(1);
-
-            for (std::size_t i = 0; i < numTasks; ++i) {
-                submit([&, i]() {
-                    try {
-                        f(i);
-                    } catch (...) {
-                        std::lock_guard<std::mutex> lock(exceptionMutex);
-                        if (!exception) {
-                            exception = std::current_exception();
-                        }
+            auto runTask = [&](const std::size_t i) {
+                try {
+                    f(i);
+                } catch (...) {
+                    std::lock_guard<std::mutex> lock(exceptionMutex);
+                    if (!exception) {
+                        exception = std::current_exception();
                     }
-                    done.count_down();
-                });
+                }
+                done.count_down();
+            };
+
+            for (std::size_t i = 1; i < numTasks; ++i) {
+                submit([&runTask, i]() { runTask(i); });
             }
+            runTask(0);
+
+            // The caller searches for  tasks while waiting for the group.
+            searching_.fetch_add(1);
 
             while (!done.try_wait()) {
                 if (TaskType task; tryPopTask(task)) {
