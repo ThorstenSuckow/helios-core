@@ -336,6 +336,8 @@ export namespace helios::core::thread {
          */
         static constexpr std::chrono::milliseconds DEFAULT_WAIT_BEFORE_SLEEP{20};
 
+        static constexpr std::size_t DEFAULT_SPIN_DURATION = 1024;
+
         static std::size_t currentThreadId() noexcept {
             return localThreadId_;
         }
@@ -348,10 +350,12 @@ export namespace helios::core::thread {
          */
         explicit ThreadPool(
             const std::size_t numThreads,
-            const std::chrono::milliseconds waitBeforeSleep = DEFAULT_WAIT_BEFORE_SLEEP
+            const std::chrono::milliseconds waitBeforeSleep = DEFAULT_WAIT_BEFORE_SLEEP,
+            const std::size_t spinDuration = DEFAULT_SPIN_DURATION
         )
             : running_(true),
             waitBeforeSleep_(waitBeforeSleep),
+            spinDuration_(spinDuration),
             joinThreads_(threads_) {
 
             queues_.reserve(numThreads);
