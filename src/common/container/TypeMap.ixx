@@ -154,8 +154,6 @@ public:
         using Type = std::remove_cvref_t<TType>;
         const auto idx = TypeMapItemTypeId::template id<Type>().value();
 
-        auto& foo = ownedModels_;
-
         assert(idx < ownedModels_.size() && "Storage for type ist not available.");
 
         auto model = std::make_unique<OwnedModel<Type>>(
